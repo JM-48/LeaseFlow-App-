@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="45ac9a66-9733-48a3-8233-58b01e1f1b03" name="Changes" comment="" />
+    <list default="true" id="bea20912-7be6-48f3-a193-136009e4ebe7" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -16,10 +16,23 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 8
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "fergonzalez1717"
+  }
 }]]></component>
-  <component name="ProjectId" id="3CjVPEjqjwSi0XLea6xuA1dc1wX" />
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/davidolra/Rentify-actyividad.git",
+    "accountId": "81ccd779-bb0e-4d7d-83e7-ffb7a1c0224d"
+  }
+}]]></component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 6
+}]]></component>
+  <component name="ProjectId" id="36m9MiUV9Euro63iukEHbbYMs4c" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -27,6 +40,8 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Notification.DisplayName-DoNotAsk-build.script.found.notification.id": "Android Gradle build script found",
+    "Notification.DoNotAsk-build.script.found.notification.id": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
     "RunOnceActivity.git.unshallow": "true",
@@ -34,16 +49,16 @@
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "C:/Users/jeanf/OneDrive/Documentos/GitHub/LeaseFlow-App-"
+    "kotlin-language-version-configured": "true"
   }
 }]]></component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="45ac9a66-9733-48a3-8233-58b01e1f1b03" name="Changes" comment="" />
-      <created>1776898939304</created>
+      <changelist id="bea20912-7be6-48f3-a193-136009e4ebe7" name="Changes" comment="" />
+      <created>1765600834790</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1776898939304</updated>
+      <updated>1765600834790</updated>
     </task>
     <servers />
   </component>

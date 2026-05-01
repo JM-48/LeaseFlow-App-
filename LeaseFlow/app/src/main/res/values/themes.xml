@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema base de LeaseFlow -->
+    <style name="Theme.LeaseFlow" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Color primario (Verde oscuro) -->
+        <item name="android:colorPrimary">@color/green_dark</item>
+        <item name="android:colorPrimaryDark">@color/green_dark</item>
+        <item name="android:colorAccent">@color/green_medium</item>
+
+        <!-- Colores de fondo -->
+        <item name="android:windowBackground">@color/white</item>
+
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@color/green_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- Tema para Material3 (usado por Jetpack Compose) -->
+    <style name="Theme.leaseflow" parent="Theme.LeaseFlow" />
+
+    <style name="theme.UINavegacion.Splash" parent="Theme.SplashScreen">
+
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.LeaseFlow</item>
+
+    </style>
+
+
+</resources>
