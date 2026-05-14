@@ -10,6 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.leaseflow.app.ui.theme.LfCyan
+import com.leaseflow.app.ui.theme.LfNavy
+import com.leaseflow.app.ui.theme.LfPink
 
 /**
  * Chip para mostrar el estado de una solicitud con colores apropiados
@@ -21,16 +24,16 @@ fun EstadoChip(
 ) {
     val (backgroundColor, textColor) = when (estado.uppercase()) {
         "PENDIENTE" -> Pair(
-            Color(0xFFFFF3E0),  // Naranja claro
-            Color(0xFFE65100)   // Naranja oscuro
+            MaterialTheme.colorScheme.secondaryContainer,
+            MaterialTheme.colorScheme.primary
         )
         "ACEPTADA", "APROBADA", "APROBADO" -> Pair(
-            Color(0xFFE8F5E9),  // Verde claro
-            Color(0xFF2E7D32)   // Verde oscuro
+            LfCyan.copy(alpha = 0.18f),
+            LfNavy
         )
         "RECHAZADA", "RECHAZADO" -> Pair(
-            Color(0xFFFFEBEE),  // Rojo claro
-            Color(0xFFC62828)   // Rojo oscuro
+            LfPink.copy(alpha = 0.20f),
+            LfNavy
         )
         else -> Pair(
             MaterialTheme.colorScheme.surfaceVariant,

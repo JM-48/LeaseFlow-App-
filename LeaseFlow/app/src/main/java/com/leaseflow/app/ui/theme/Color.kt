@@ -2,25 +2,27 @@ package com.leaseflow.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ========== COLORES LEASEFLOW ==========
-// Paleta: Verde oscuro + Gris (profesional y confiable para inmobiliaria)
+val LfNavy = Color(0xFF0B1B3A)
+val LfNavy2 = Color(0xFF102A5C)
+val LfPurple = Color(0xFF6D3DF5)
+val LfPurple2 = Color(0xFF8B5CF6)
+val LfLavender = Color(0xFFEDE9FE)
 
-// Verde oscuro (principal)
-val GreenDark = Color(0xFF1B5E20)        // Verde oscuro intenso
-val GreenMedium = Color(0xFF388E3C)      // Verde medio
-val GreenLight = Color(0xFF66BB6A)       // Verde claro (acentos)
+val LfBg = Color(0xFFF7F8FF)
+val LfSurface = Color(0xFFFFFFFF)
+val LfText = Color(0xFF0F172A)
+val LfMuted = Color(0xFF475569)
+val LfBorder = Color(0x1F0F172A)
 
-// Grises
-val GrayDark = Color(0xFF424242)         // Gris oscuro (texto primario)
-val GrayMedium = Color(0xFF757575)       // Gris medio (texto secundario)
-val GrayLight = Color(0xFFE0E0E0)        // Gris claro (fondos)
-val GrayBg = Color(0xFFF5F5F5)           // Gris muy claro (fondo general)
+val LfCyan = Color(0xFF22D3EE)
+val LfPink = Color(0xFFF472B6)
+val LfViolet = Color(0xFFA855F7)
+val LfDeepPurple = Color(0xFF9333EA)
+val LfLavenderAccent = Color(0xFFC084FC)
 
-// Blancos y negros
 val White = Color(0xFFFFFFFF)
 val Black = Color(0xFF000000)
 
-// Estados
-val ErrorRed = Color(0xFFD32F2F)         // Rojo para errores
-val SuccessGreen = Color(0xFF4CAF50)     // Verde éxito
-val WarningOrange = Color(0xFFFF9800)    // Naranja advertencia)
+val LfError = Color(0xFFDC2626)
+val LfSuccess = Color(0xFF16A34A)
+val LfWarning = Color(0xFFF59E0B)

@@ -129,7 +129,7 @@ fun GestionPropiedadesScreen(
 @Composable
 private fun PropiedadAdminCard(
     propiedad: PropiedadEntity,
-    db: RentifyDatabase,
+    db: LeaseFlowDatabase,
     isAdmin: Boolean,
     onVerDetalle: () -> Unit,
     onEliminarRemoto: (Long) -> Unit, // Función de eliminación de la tarjeta

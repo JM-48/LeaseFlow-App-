@@ -9,7 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.leaseflow.app.ui.viewmodel.ContactViewModel
@@ -63,9 +62,9 @@ fun ContactScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         }
@@ -107,7 +106,7 @@ fun ContactScreen(
                         Text(
                             text = "Escríbenos y te responderemos pronto",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -118,7 +117,7 @@ fun ContactScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFFFEBEE)
+                        containerColor = MaterialTheme.colorScheme.errorContainer
                     )
                 ) {
                     Row(
@@ -128,10 +127,10 @@ fun ContactScreen(
                         Icon(
                             imageVector = Icons.Default.Warning,
                             contentDescription = "Error",
-                            tint = Color.Red
+                            tint = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = error, color = Color.Red)
+                        Text(text = error, color = MaterialTheme.colorScheme.onErrorContainer)
                     }
                 }
             }
@@ -140,7 +139,7 @@ fun ContactScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFE8F5E9)
+                        containerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.14f)
                     )
                 ) {
                     Row(
@@ -150,10 +149,10 @@ fun ContactScreen(
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = "Éxito",
-                            tint = Color(0xFF4CAF50)
+                            tint = MaterialTheme.colorScheme.tertiary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = success, color = Color(0xFF4CAF50))
+                        Text(text = success, color = MaterialTheme.colorScheme.primaryContainer)
                     }
                 }
             }
@@ -251,12 +250,12 @@ fun ContactScreen(
                             ) {
                                 Text(
                                     text = errorMensaje ?: "",
-                                    color = if (errorMensaje != null) Color.Red else Color.Gray
+                                    color = if (errorMensaje != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = "${mensaje.length}/5000",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -265,7 +264,7 @@ fun ContactScreen(
                     Text(
                         text = "* Campos obligatorios",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -318,7 +317,7 @@ fun ContactScreen(
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
                     Icon(Icons.Default.Send, contentDescription = null)

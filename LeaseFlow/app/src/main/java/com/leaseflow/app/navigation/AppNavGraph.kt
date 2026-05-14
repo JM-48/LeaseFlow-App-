@@ -1,10 +1,16 @@
 package com.leaseflow.app.navigation
 
 import android.content.Context
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -117,26 +123,59 @@ fun AppNavGraph(
             )
         }
     ) {
-        Scaffold(
-            topBar = {
-                AppTopBar(
-                    isLoggedIn = isLoggedIn,
-                    userRole = userRole,
-                    onOpenDrawer = { scope.launch { drawerState.open() } },
-                    onHome = goHome,
-                    onLogin = goLogin,
-                    onRegister = goRegister,
-                    onPropiedades = goPropiedades,
-                    onPerfil = goPerfil,
-                    onSolicitudes = goSolicitudes
-                )
-            }
-        ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = if (isLoggedIn) Routes.HOME else Routes.WELCOME,
-                modifier = Modifier.padding(innerPadding)
-            ) {
+        val baseGradient = Brush.linearGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.background,
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.70f)
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(1000f, 1600f)
+        )
+        val cyanGlow = Brush.radialGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.20f),
+                Color.Transparent
+            ),
+            center = Offset(120f, 220f),
+            radius = 900f
+        )
+        val purpleGlow = Brush.radialGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                Color.Transparent
+            ),
+            center = Offset(900f, 1200f),
+            radius = 1000f
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(baseGradient)
+        ) {
+            Box(modifier = Modifier.fillMaxSize().background(cyanGlow))
+            Box(modifier = Modifier.fillMaxSize().background(purpleGlow))
+
+            Scaffold(
+                containerColor = Color.Transparent,
+                topBar = {
+                    AppTopBar(
+                        isLoggedIn = isLoggedIn,
+                        userRole = userRole,
+                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                        onHome = goHome,
+                        onLogin = goLogin,
+                        onRegister = goRegister,
+                        onPropiedades = goPropiedades,
+                        onPerfil = goPerfil,
+                        onSolicitudes = goSolicitudes
+                    )
+                }
+            ) { innerPadding ->
+                NavHost(
+                    navController = navController,
+                    startDestination = if (isLoggedIn) Routes.HOME else Routes.WELCOME,
+                    modifier = Modifier.padding(innerPadding)
+                ) {
 
                 composable(Routes.WELCOME) {
                     WelcomeScreen(
@@ -370,4 +409,5 @@ fun AppNavGraph(
             }
         }
     }
+}
 }

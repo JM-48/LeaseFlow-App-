@@ -1,6 +1,5 @@
 package com.leaseflow.app.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -15,38 +14,49 @@ import androidx.compose.ui.platform.LocalContext
 // Basado en el diseño del documento: Verde oscuro profesional
 
 private val DarkColorScheme = darkColorScheme(
-    primary = GreenMedium,           // Verde medio para modo oscuro
-    secondary = GrayMedium,          // Gris medio
-    tertiary = GreenLight,           // Verde claro para acentos
-    background = GrayDark,           // Fondo oscuro
-    surface = GrayDark,              // Superficie oscura
-    onPrimary = White,               // Texto sobre primary
-    onSecondary = White,             // Texto sobre secondary
-    onTertiary = White,              // Texto sobre tertiary
-    onBackground = White,            // Texto sobre background
-    onSurface = White                // Texto sobre surface
+    primary = LfPurple2,
+    onPrimary = White,
+    primaryContainer = LfNavy2,
+    onPrimaryContainer = White,
+    secondary = LfPurple,
+    onSecondary = White,
+    secondaryContainer = LfNavy,
+    onSecondaryContainer = White,
+    tertiary = LfCyan,
+    onTertiary = LfNavy,
+    background = LfNavy,
+    onBackground = White,
+    surface = LfNavy2,
+    onSurface = White,
+    surfaceVariant = LfNavy2,
+    onSurfaceVariant = White.copy(alpha = 0.78f),
+    outline = White.copy(alpha = 0.18f),
+    error = LfError,
+    onError = White
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = GreenDark,             // Verde oscuro (principal)
-    secondary = GreenMedium,         // Verde medio (secundario)
-    tertiary = GreenLight,           // Verde claro (acentos)
-    background = White,              // Fondo blanco limpio
-    surface = White,                 // Superficie blanca
-    surfaceVariant = GrayBg,         // Fondo gris muy claro
-    onPrimary = White,               // Texto sobre primary
-    onSecondary = White,             // Texto sobre secondary
-    onTertiary = Black,              // Texto sobre tertiary
-    onBackground = GrayDark,         // Texto principal
-    onSurface = GrayDark,            // Texto sobre surface
-    onSurfaceVariant = GrayMedium,   // Texto secundario
-
-    // Colores especiales
-    error = ErrorRed,                // Errores
-    primaryContainer = GreenLight,   // Contenedores primary
-    secondaryContainer = GrayLight,  // Contenedores secondary
-    onPrimaryContainer = GreenDark,  // Texto en containers primary
-    onSecondaryContainer = GrayDark  // Texto en containers secondary
+    primary = LfPurple,
+    onPrimary = White,
+    primaryContainer = LfNavy,
+    onPrimaryContainer = White,
+    secondary = LfPurple2,
+    onSecondary = White,
+    secondaryContainer = LfLavender,
+    onSecondaryContainer = LfNavy,
+    tertiary = LfCyan,
+    onTertiary = LfNavy,
+    background = LfBg,
+    onBackground = LfText,
+    surface = LfSurface,
+    onSurface = LfText,
+    surfaceVariant = LfLavender,
+    onSurfaceVariant = LfMuted,
+    outline = LfBorder,
+    error = LfError,
+    onError = White,
+    errorContainer = LfError.copy(alpha = 0.10f),
+    onErrorContainer = LfError
 )
 
 @Composable

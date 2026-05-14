@@ -2,16 +2,13 @@
 <resources>
     <!-- Tema base de LeaseFlow -->
     <style name="Theme.LeaseFlow" parent="android:Theme.Material.Light.NoActionBar">
-        <!-- Color primario (Verde oscuro) -->
-        <item name="android:colorPrimary">@color/green_dark</item>
-        <item name="android:colorPrimaryDark">@color/green_dark</item>
-        <item name="android:colorAccent">@color/green_medium</item>
+        <item name="android:colorPrimary">@color/lf_purple</item>
+        <item name="android:colorPrimaryDark">@color/lf_navy</item>
+        <item name="android:colorAccent">@color/lf_purple_2</item>
 
-        <!-- Colores de fondo -->
-        <item name="android:windowBackground">@color/white</item>
+        <item name="android:windowBackground">@color/lf_bg</item>
 
-        <!-- Status bar -->
-        <item name="android:statusBarColor">@color/green_dark</item>
+        <item name="android:statusBarColor">@color/lf_navy</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
 

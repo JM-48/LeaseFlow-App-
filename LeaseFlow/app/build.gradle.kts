@@ -44,6 +44,9 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        unitTests.all {
+            it.jvmArgs("-Dnet.bytebuddy.experimental=true")
+        }
     }
 }
 
@@ -97,7 +100,8 @@ dependencies {
 
     // ==================== TESTS ====================
     // Mockito: Para simular el Repositorio (fingir respuestas del servidor)
-    testImplementation("org.mockito:mockito-core:5.3.1")
+    testImplementation("org.mockito:mockito-core:5.2.0")
+    testImplementation("org.mockito:mockito-inline:5.2.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.0.0")
 
     // Coroutines Test: Para probar funciones 'suspend' y flujos

@@ -58,10 +58,12 @@ class AgregarPropiedadViewModelTest {
         val regionIdTarget = 5L
         val comunaCorrecta = ComunaRemoteDTO(id = 1, nombre = "Comuna 1", regionId = 5, region = null)
 
-        whenever(propertyRepository.obtenerComunasPorRegion(regionIdTarget))
+        whenever(propertyRepository.listarComunas())
             .thenReturn(ApiResult.Success(listOf(comunaCorrecta)))
 
         // 2. ACT
+        viewModel.cargarCatalogos()
+        advanceUntilIdle()
         viewModel.cargarComunasPorRegion(regionIdTarget)
         advanceUntilIdle()
 

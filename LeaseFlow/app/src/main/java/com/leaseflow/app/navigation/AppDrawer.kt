@@ -1,5 +1,6 @@
 package com.leaseflow.app.navigation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -8,6 +9,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.leaseflow.app.data.local.LeaseFlowDatabase
@@ -33,200 +36,233 @@ fun AppDrawer(
     val esPropietario = userRole?.uppercase() == "PROPIETARIO"
     val esAdmin = userRole?.uppercase() == "ADMINISTRADOR"
 
-    ModalDrawerSheet {
-        Column(
+    ModalDrawerSheet(
+        drawerContainerColor = Color.Transparent
+    ) {
+        val drawerGradient = Brush.verticalGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f),
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.82f)
+            )
+        )
+        Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .verticalScroll(scrollState)
-                .padding(16.dp)
+                .background(drawerGradient)
         ) {
-            Text(
-                text = "LeaseFlow",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-            if (userId != null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .verticalScroll(scrollState)
+                    .padding(16.dp)
+            ) {
                 Text(
-                    text = userName ?: "Usuario",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Text(
-                    text = userEmail ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = "LeaseFlow",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color.White,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = Color.White.copy(alpha = 0.16f)
+                )
+
+                if (userId != null) {
+                    Text(
+                        text = userName ?: "Usuario",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    Text(
+                        text = userEmail ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.78f),
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = Color.White.copy(alpha = 0.16f)
+                )
+
+                DrawerItem(
+                    icon = Icons.Default.Home,
+                    label = "Inicio",
+                    onClick = {
+                        navController.navigate(Routes.HOME)
+                        onCloseDrawer()
+                    }
+                )
+
+                DrawerItem(
+                    icon = Icons.Default.Person,
+                    label = "Mi Perfil",
+                    onClick = {
+                        navController.navigate(Routes.PERFIL)
+                        onCloseDrawer()
+                    }
+                )
+
+                DrawerItem(
+                    icon = Icons.Default.Search,
+                    label = "Buscar Propiedades",
+                    onClick = {
+                        navController.navigate(Routes.CATALOGO_PROPIEDADES)
+                        onCloseDrawer()
+                    }
+                )
+
+                if (esArrendatario || esAdmin) {
+                    DrawerItem(
+                        icon = Icons.Default.Assignment,
+                        label = "Mis Solicitudes",
+                        onClick = {
+                            navController.navigate(Routes.SOLICITUDES)
+                            onCloseDrawer()
+                        }
+                    )
+
+                    DrawerItem(
+                        icon = Icons.Default.Description,
+                        label = "Mis Documentos",
+                        onClick = {
+                            navController.navigate(Routes.MIS_DOCUMENTOS)
+                            onCloseDrawer()
+                        }
+                    )
+                }
+
+                if (esPropietario || esAdmin) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = Color.White.copy(alpha = 0.16f)
+                    )
+
+                    Text(
+                        text = "Propietario",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.88f),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    DrawerItem(
+                        icon = Icons.Default.HomeWork,
+                        label = "Mis Propiedades",
+                        onClick = {
+                            navController.navigate(Routes.MIS_PROPIEDADES)
+                            onCloseDrawer()
+                        }
+                    )
+
+                    DrawerItem(
+                        icon = Icons.Default.Add,
+                        label = "Agregar Propiedad",
+                        onClick = {
+                            navController.navigate(Routes.AGREGAR_PROPIEDAD)
+                            onCloseDrawer()
+                        }
+                    )
+
+                    DrawerItem(
+                        icon = Icons.Default.Assignment,
+                        label = "Solicitudes Recibidas",
+                        onClick = {
+                            navController.navigate(Routes.SOLICITUDES)
+                            onCloseDrawer()
+                        }
+                    )
+                }
+
+                if (esAdmin) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = Color.White.copy(alpha = 0.16f)
+                    )
+
+                    Text(
+                        text = "Administracion",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.88f),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    DrawerItem(
+                        icon = Icons.Default.Dashboard,
+                        label = "Panel Admin",
+                        onClick = {
+                            navController.navigate(Routes.ADMIN_PANEL)
+                            onCloseDrawer()
+                        }
+                    )
+
+                    DrawerItem(
+                        icon = Icons.Default.People,
+                        label = "Gestion Usuarios",
+                        onClick = {
+                            navController.navigate(Routes.GESTION_USUARIOS)
+                            onCloseDrawer()
+                        }
+                    )
+
+                    DrawerItem(
+                        icon = Icons.Default.Business,
+                        label = "Gestion Propiedades",
+                        onClick = {
+                            navController.navigate(Routes.GESTION_PROPIEDADES)
+                            onCloseDrawer()
+                        }
+                    )
+
+                    DrawerItem(
+                        icon = Icons.Default.Description,
+                        label = "Gestion Documentos",
+                        onClick = {
+                            navController.navigate(Routes.GESTION_DOCUMENTOS)
+                            onCloseDrawer()
+                        }
+                    )
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = Color.White.copy(alpha = 0.16f)
+                )
+
+                DrawerItem(
+                    icon = Icons.Default.ContactMail,
+                    label = "Contacto",
+                    onClick = {
+                        navController.navigate(Routes.CONTACT)
+                        onCloseDrawer()
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = Color.White.copy(alpha = 0.16f)
+                )
+
+                DrawerItem(
+                    icon = Icons.Default.ExitToApp,
+                    label = "Cerrar Sesion",
+                    onClick = {
+                        scope.launch {
+                            userPreferences.clearUserSession()
+                        }
+                        navController.navigate(Routes.WELCOME) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                        onCloseDrawer()
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
             }
-
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-            DrawerItem(
-                icon = Icons.Default.Home,
-                label = "Inicio",
-                onClick = {
-                    navController.navigate(Routes.HOME)
-                    onCloseDrawer()
-                }
-            )
-
-            DrawerItem(
-                icon = Icons.Default.Person,
-                label = "Mi Perfil",
-                onClick = {
-                    navController.navigate(Routes.PERFIL)
-                    onCloseDrawer()
-                }
-            )
-
-            DrawerItem(
-                icon = Icons.Default.Search,
-                label = "Buscar Propiedades",
-                onClick = {
-                    navController.navigate(Routes.CATALOGO_PROPIEDADES)
-                    onCloseDrawer()
-                }
-            )
-
-            if (esArrendatario || esAdmin) {
-                DrawerItem(
-                    icon = Icons.Default.Assignment,
-                    label = "Mis Solicitudes",
-                    onClick = {
-                        navController.navigate(Routes.SOLICITUDES)
-                        onCloseDrawer()
-                    }
-                )
-
-                DrawerItem(
-                    icon = Icons.Default.Description,
-                    label = "Mis Documentos",
-                    onClick = {
-                        navController.navigate(Routes.MIS_DOCUMENTOS)
-                        onCloseDrawer()
-                    }
-                )
-            }
-
-            if (esPropietario || esAdmin) {
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-                Text(
-                    text = "Propietario",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-
-                DrawerItem(
-                    icon = Icons.Default.HomeWork,
-                    label = "Mis Propiedades",
-                    onClick = {
-                        navController.navigate(Routes.MIS_PROPIEDADES)
-                        onCloseDrawer()
-                    }
-                )
-
-                DrawerItem(
-                    icon = Icons.Default.Add,
-                    label = "Agregar Propiedad",
-                    onClick = {
-                        navController.navigate(Routes.AGREGAR_PROPIEDAD)
-                        onCloseDrawer()
-                    }
-                )
-
-                DrawerItem(
-                    icon = Icons.Default.Assignment,
-                    label = "Solicitudes Recibidas",
-                    onClick = {
-                        navController.navigate(Routes.SOLICITUDES)
-                        onCloseDrawer()
-                    }
-                )
-            }
-
-            if (esAdmin) {
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-                Text(
-                    text = "Administracion",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-
-                DrawerItem(
-                    icon = Icons.Default.Dashboard,
-                    label = "Panel Admin",
-                    onClick = {
-                        navController.navigate(Routes.ADMIN_PANEL)
-                        onCloseDrawer()
-                    }
-                )
-
-                DrawerItem(
-                    icon = Icons.Default.People,
-                    label = "Gestion Usuarios",
-                    onClick = {
-                        navController.navigate(Routes.GESTION_USUARIOS)
-                        onCloseDrawer()
-                    }
-                )
-
-                DrawerItem(
-                    icon = Icons.Default.Business,
-                    label = "Gestion Propiedades",
-                    onClick = {
-                        navController.navigate(Routes.GESTION_PROPIEDADES)
-                        onCloseDrawer()
-                    }
-                )
-
-                DrawerItem(
-                    icon = Icons.Default.Description,
-                    label = "Gestion Documentos",
-                    onClick = {
-                        navController.navigate(Routes.GESTION_DOCUMENTOS)
-                        onCloseDrawer()
-                    }
-                )
-            }
-
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-            DrawerItem(
-                icon = Icons.Default.ContactMail,
-                label = "Contacto",
-                onClick = {
-                    navController.navigate(Routes.CONTACT)
-                    onCloseDrawer()
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-            DrawerItem(
-                icon = Icons.Default.ExitToApp,
-                label = "Cerrar Sesion",
-                onClick = {
-                    scope.launch {
-                        userPreferences.clearUserSession()
-                    }
-                    navController.navigate(Routes.WELCOME) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                    onCloseDrawer()
-                }
-            )
-
-            // Espacio extra al final para asegurar scroll completo
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -243,6 +279,14 @@ private fun DrawerItem(
         label = { Text(label) },
         selected = false,
         onClick = onClick,
+        colors = NavigationDrawerItemDefaults.colors(
+            selectedContainerColor = Color.White.copy(alpha = 0.14f),
+            unselectedContainerColor = Color.Transparent,
+            selectedIconColor = Color.White,
+            unselectedIconColor = Color.White.copy(alpha = 0.90f),
+            selectedTextColor = Color.White,
+            unselectedTextColor = Color.White.copy(alpha = 0.92f)
+        ),
         modifier = Modifier.padding(vertical = 4.dp)
     )
 }
