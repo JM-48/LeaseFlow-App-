@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
         ResenaEntity::class,
         SolicitudEntity::class
     ],
-    version = 3,  // ✅ INCREMENTADA para forzar recreación
+    version = 5,  // ✅ INCREMENTADA para forzar recreación
     exportSchema = false
 )
 abstract class LeaseFlowDatabase : RoomDatabase() {

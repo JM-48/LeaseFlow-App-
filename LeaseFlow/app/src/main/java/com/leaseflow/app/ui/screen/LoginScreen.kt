@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.leaseflow.app.ui.viewmodel.LeaseFlowAuthViewModel
 import com.leaseflow.app.data.local.storage.UserPreferences
-import kotlinx.coroutines.launch
 import com.leaseflow.app.R
 
 @Composable
@@ -31,7 +30,6 @@ fun LoginScreenVm(
     val state by vm.login.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val userPrefs = remember { UserPreferences(context) }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(state.success) {
         if (state.success) {
@@ -39,21 +37,19 @@ fun LoginScreenVm(
             if (usuario != null) {
                 // ✅ CAMBIO 1: rol_id → rolId ?: 0L
                 val rolNombre = vm.getRoleName(usuario.rolId ?: 0L)
-                scope.launch {
-                    userPrefs.saveUserSession(
-                        // ✅ CAMBIO 2: id → id ?: 0L
-                        userId = usuario.id ?: 0L,
-                        email = usuario.email,
-                        name = "${usuario.pnombre} ${usuario.papellido}",
-                        role = rolNombre,
-                        // ✅ CAMBIO 3: duoc_vip → duocVip ?: false
-                        isDuocVip = usuario.duocVip ?: false
-                    )
-                }
+                userPrefs.saveUserSession(
+                    // ✅ CAMBIO 2: id → id ?: 0L
+                    userId = usuario.id ?: 0L,
+                    email = usuario.email,
+                    name = "${usuario.pnombre} ${usuario.papellido}",
+                    role = rolNombre,
+                    // ✅ CAMBIO 3: duoc_vip → duocVip ?: false
+                    isDuocVip = usuario.duocVip ?: false
+                )
                 vm.clearLoginResult()
                 onLoginOkNavigateHome()
             } else {
-                scope.launch { userPrefs.setLoggedIn(true) }
+                userPrefs.setLoggedIn(true)
                 vm.clearLoginResult()
                 onLoginOkNavigateHome()
             }

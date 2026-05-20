@@ -148,9 +148,9 @@ class LeaseFlowUserRepository(
             // Parsear fecha de nacimiento
             val fnacimiento = parseFechaNacimiento(usuarioRemoto.fnacimiento)
 
-            // Obtener estado activo
-            val estadoActivo = catalogDao.getEstadoByNombre("Activo")
-                ?: return Result.failure(IllegalStateException("Estado 'Activo' no encontrado"))
+            val estadoIdLocal = asegurarEstadoId(usuarioRemoto)
+                ?: return Result.failure(IllegalStateException("No se pudo resolver el estado del usuario"))
+            val rolIdLocal = asegurarRolId(usuarioRemoto)
 
             val now = System.currentTimeMillis()
 
@@ -172,8 +172,8 @@ class LeaseFlowUserRepository(
                 codigo_ref = usuarioRemoto.codigoRef ?: generarCodigoReferido(),
                 fcreacion = parseFechaCreacion(usuarioRemoto.fcreacion) ?: now,
                 factualizacion = now,
-                estado_id = usuarioRemoto.estadoId ?: estadoActivo.id,
-                rol_id = usuarioRemoto.rolId
+                estado_id = estadoIdLocal,
+                rol_id = rolIdLocal
             )
 
             if (usuarioExistente != null) {
@@ -188,6 +188,55 @@ class LeaseFlowUserRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private suspend fun asegurarEstadoId(usuarioRemoto: com.leaseflow.app.data.remote.dto.UsuarioRemoteDTO): Long? {
+        val raw = usuarioRemoto.estado?.nombre ?: usuarioRemoto.estadoId?.toString()
+        val desiredNombre = normalizarNombreCatalogo(usuarioRemoto.estado?.nombre)
+        if (desiredNombre != null) {
+            val existente = catalogDao.getEstadoByNombre(desiredNombre)
+            if (existente != null) return existente.id
+            val insertedId = catalogDao.insertEstado(com.leaseflow.app.data.local.entities.EstadoEntity(nombre = desiredNombre))
+            return if (insertedId > 0) insertedId else catalogDao.getEstadoByNombre(desiredNombre)?.id
+        }
+
+        val estadoId = usuarioRemoto.estadoId
+        if (estadoId != null) {
+            val byId = catalogDao.getEstadoById(estadoId)
+            if (byId != null) return byId.id
+        }
+
+        val activo = catalogDao.getEstadoByNombre("Activo")
+            ?: catalogDao.getEstadoByNombre("ACTIVO")
+            ?: catalogDao.getEstadoByNombre("Activo".uppercase())
+        if (activo != null) return activo.id
+
+        val insertedId = catalogDao.insertEstado(com.leaseflow.app.data.local.entities.EstadoEntity(nombre = "Activo"))
+        return if (insertedId > 0) insertedId else null
+    }
+
+    private suspend fun asegurarRolId(usuarioRemoto: com.leaseflow.app.data.remote.dto.UsuarioRemoteDTO): Long? {
+        val desiredNombre = normalizarNombreCatalogo(usuarioRemoto.rol?.nombre)
+        if (desiredNombre != null) {
+            val existente = catalogDao.getRolByNombre(desiredNombre)
+            if (existente != null) return existente.id
+            catalogDao.insertRol(com.leaseflow.app.data.local.entities.RolEntity(nombre = desiredNombre))
+            return catalogDao.getRolByNombre(desiredNombre)?.id
+        }
+
+        val rolId = usuarioRemoto.rolId
+        if (rolId != null) {
+            val byId = catalogDao.getRolById(rolId)
+            if (byId != null) return byId.id
+        }
+
+        return null
+    }
+
+    private fun normalizarNombreCatalogo(nombre: String?): String? {
+        val value = nombre?.trim()?.lowercase() ?: return null
+        if (value.isBlank()) return null
+        return value.replaceFirstChar { it.titlecase() }
     }
 
     /**

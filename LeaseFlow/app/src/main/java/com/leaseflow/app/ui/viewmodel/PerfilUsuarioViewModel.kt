@@ -51,8 +51,34 @@ class PerfilUsuarioViewModel(
 
                 when (val remoteResult = userRemoteRepository.obtenerUsuarioPorId(usuarioId, includeDetails = true)) {
                     is ApiResult.Success -> {
-                        localUserRepository.syncUsuarioFromRemote(remoteResult.data)
-                        _usuario.value = usuarioDao.getById(usuarioId)
+                        val syncResult = localUserRepository.syncUsuarioFromRemote(remoteResult.data)
+                        val usuarioLocal = usuarioDao.getById(usuarioId)
+                        _usuario.value = usuarioLocal ?: run {
+                            if (syncResult.isFailure) {
+                                _errorMsg.value = "No se pudo guardar el usuario localmente, mostrando datos remotos"
+                            }
+                            UsuarioEntity(
+                                id = remoteResult.data.id ?: usuarioId,
+                                pnombre = remoteResult.data.pnombre,
+                                snombre = remoteResult.data.snombre,
+                                papellido = remoteResult.data.papellido,
+                                fnacimiento = System.currentTimeMillis(),
+                                email = remoteResult.data.email,
+                                rut = remoteResult.data.rut,
+                                ntelefono = remoteResult.data.ntelefono,
+                                direccion = null,
+                                comuna = null,
+                                fotoPerfil = null,
+                                clave = "",
+                                duoc_vip = remoteResult.data.duocVip ?: false,
+                                puntos = remoteResult.data.puntos ?: 0,
+                                codigo_ref = remoteResult.data.codigoRef ?: "",
+                                fcreacion = System.currentTimeMillis(),
+                                factualizacion = System.currentTimeMillis(),
+                                estado_id = remoteResult.data.estadoId ?: 1L,
+                                rol_id = remoteResult.data.rolId
+                            )
+                        }
                     }
                     is ApiResult.Error -> {
                         if (localUser == null) {
@@ -85,8 +111,6 @@ class PerfilUsuarioViewModel(
         snombre: String,
         papellido: String,
         telefono: String,
-        direccion: String?,
-        comuna: String?,
         fotoUri: String? = null
     ) {
         viewModelScope.launch {
@@ -106,12 +130,14 @@ class PerfilUsuarioViewModel(
                 when (val result = userRemoteRepository.actualizarUsuario(usuarioId, updateDto)) {
                     is ApiResult.Success -> {
                         localUserRepository.syncUsuarioFromRemote(result.data)
-                        _usuario.value = usuarioDao.getById(usuarioId)?.copy(
-                            direccion = direccion,
-                            comuna = comuna,
-                            fotoPerfil = fotoUri
-                        )
-                        _usuario.value?.let { usuarioDao.update(it) }
+                        val usuarioActualizado = usuarioDao.getById(usuarioId)
+                        _usuario.value = if (fotoUri != null && usuarioActualizado != null) {
+                            val withPhoto = usuarioActualizado.copy(fotoPerfil = fotoUri)
+                            usuarioDao.update(withPhoto)
+                            withPhoto
+                        } else {
+                            usuarioActualizado
+                        }
                     }
                     is ApiResult.Error -> _errorMsg.value = result.message
                     is ApiResult.Loading -> {}

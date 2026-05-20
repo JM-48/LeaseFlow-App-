@@ -246,8 +246,8 @@ class LeaseFlowAuthViewModel(
 
     fun onRutChange(value: String) {
         val filtered = value.filter { it.isDigit() || it.lowercaseChar() == 'k' || it == '.' || it == '-' }
-            .take(12)
-        _register.update { it.copy(rut = filtered, rutError = validateRut(filtered)) }
+        val normalized = normalizeRutInput(filtered)
+        _register.update { it.copy(rut = normalized, rutError = validateRut(normalized)) }
         recomputeRegisterCanSubmit()
     }
 
@@ -398,6 +398,12 @@ class LeaseFlowAuthViewModel(
 
             val snombreValue = s.snombre.trim()
             val apellidos = "${s.papellido.trim()} ${s.mapellido.trim()}".trim()
+            val rutNormalized = normalizeRutForBackend(s.rut)
+            if (rutNormalized == null) {
+                _register.update { it.copy(isSubmitting = false, rutError = "RUT inválido (ej: 12345678-9)") }
+                recomputeRegisterCanSubmit()
+                return@launch
+            }
 
             when (val result = remoteRepository.registrarUsuario(
                 pnombre = s.pnombre.trim(),
@@ -405,7 +411,7 @@ class LeaseFlowAuthViewModel(
                 papellido = apellidos,
                 fnacimiento = fechaISO,
                 email = s.email.trim(),
-                rut = s.rut.trim(),
+                rut = rutNormalized,
                 ntelefono = s.telefono.trim(),
                 clave = s.pass,
                 rolId = rolId
@@ -527,7 +533,11 @@ class LeaseFlowAuthViewModel(
         return if (name.length < 2) "Mínimo 2 caracteres" else null
     }
 
-    private fun validateRut(rut: String) = if (rut.isNotBlank()) null else "RUT obligatorio"
+    private fun validateRut(rut: String): String? {
+        if (rut.isBlank()) return "RUT obligatorio"
+        val normalized = normalizeRutForBackend(rut) ?: return "RUT inválido (ej: 12345678-9)"
+        return if (validarRutConDv(normalized)) null else "RUT inválido (ej: 12345678-9)"
+    }
     private fun validatePhoneChileno(phone: String) = if (phone.isNotBlank()) null else "Teléfono obligatorio"
     private fun validateStrongPassword(pass: String) = if (pass.length >= 8) null else "Mínimo 8 caracteres"
     private fun validateConfirm(pass: String, confirm: String) = if (pass == confirm) null else "No coincide"
@@ -537,5 +547,53 @@ class LeaseFlowAuthViewModel(
         val ahora = System.currentTimeMillis()
         val edad = (ahora - timestamp) / (1000L * 60 * 60 * 24 * 365)
         return if (edad < 18) "Debes ser mayor de 18 años" else null
+    }
+
+    private fun normalizeRutInput(input: String): String {
+        val cleaned = input.replace(".", "").replace(" ", "").uppercase()
+        val raw = cleaned.replace("-", "")
+        if (raw.length < 2) return cleaned.take(10)
+        val body = raw.dropLast(1).filter { it.isDigit() }.take(8)
+        val dv = raw.takeLast(1)
+        return if (body.length in 7..8 && (dv.first().isDigit() || dv == "K")) {
+            "$body-$dv".take(10)
+        } else {
+            cleaned.take(10)
+        }
+    }
+
+    private fun normalizeRutForBackend(input: String): String? {
+        val cleaned = input.replace(".", "").replace(" ", "").uppercase()
+        val raw = cleaned.replace("-", "")
+        if (raw.length < 2) return null
+        val body = raw.dropLast(1).filter { it.isDigit() }
+        val dv = raw.takeLast(1)
+        if (body.length !in 7..8) return null
+        if (!(dv.first().isDigit() || dv == "K")) return null
+        return "$body-$dv"
+    }
+
+    private fun validarRutConDv(rut: String): Boolean {
+        val parts = rut.split("-")
+        if (parts.size != 2) return false
+        val body = parts[0]
+        val dv = parts[1].uppercase()
+        if (body.length !in 7..8) return false
+        if (!body.all { it.isDigit() }) return false
+        if (!(dv.length == 1 && (dv[0].isDigit() || dv == "K"))) return false
+
+        var sum = 0
+        var factor = 2
+        for (i in body.length - 1 downTo 0) {
+            sum += (body[i].digitToInt() * factor)
+            factor = if (factor == 7) 2 else factor + 1
+        }
+        val mod = 11 - (sum % 11)
+        val expected = when (mod) {
+            11 -> "0"
+            10 -> "K"
+            else -> mod.toString()
+        }
+        return expected == dv
     }
 }

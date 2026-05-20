@@ -205,7 +205,7 @@ class MisPropiedadesViewModel(
             estado_id = 1L,
             tipo_id = dto.tipoId,
             comuna_id = dto.comunaId,
-            propietario_id = dto.propietarioId ?: 0L
+            propietario_id = dto.propietarioId?.takeIf { it > 0 }
         )
     }
 }

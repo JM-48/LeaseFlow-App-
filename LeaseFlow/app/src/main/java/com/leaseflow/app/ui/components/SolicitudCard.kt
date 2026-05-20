@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.leaseflow.app.domain.validation.fixEncoding
 import com.leaseflow.app.ui.viewmodel.SolicitudConDatos
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -66,7 +67,7 @@ fun SolicitudCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = solicitudConDatos.tituloPropiedad ?: "Propiedad",
+                    text = fixEncoding(solicitudConDatos.tituloPropiedad).ifBlank { "Propiedad" },
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -88,7 +89,7 @@ fun SolicitudCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = direccion,
+                        text = fixEncoding(direccion),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -113,11 +114,12 @@ fun SolicitudCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = solicitudConDatos.codigoPropiedad ?: "N/A",
+                        text = fixEncoding(solicitudConDatos.codigoPropiedad).ifBlank { "N/A" },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -181,7 +183,7 @@ fun SolicitudCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = solicitudConDatos.nombreSolicitante ?: "N/A",
+                        text = fixEncoding(solicitudConDatos.nombreSolicitante).ifBlank { "N/A" },
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
                     )

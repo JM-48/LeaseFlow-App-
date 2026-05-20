@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.leaseflow.app.data.local.LeaseFlowDatabase
 import com.leaseflow.app.data.local.entities.PropiedadEntity
+import com.leaseflow.app.domain.validation.fixEncoding
 import com.leaseflow.app.ui.viewmodel.PropiedadViewModel
 import com.leaseflow.app.ui.viewmodel.PropiedadViewModelFactory
 import kotlinx.coroutines.launch
@@ -142,9 +143,9 @@ private fun PropiedadAdminCard(
     var nombreEstado by remember { mutableStateOf("Cargando...") }
 
     LaunchedEffect(propiedad.id) {
-        nombreComuna = db.catalogDao().getComunaById(propiedad.comuna_id)?.nombre ?: "N/A"
-        nombreTipo = db.catalogDao().getTipoById(propiedad.tipo_id)?.nombre ?: "N/A"
-        nombreEstado = db.catalogDao().getEstadoById(propiedad.estado_id)?.nombre ?: "N/A"
+        nombreComuna = fixEncoding(db.catalogDao().getComunaById(propiedad.comuna_id)?.nombre).ifBlank { "N/A" }
+        nombreTipo = fixEncoding(db.catalogDao().getTipoById(propiedad.tipo_id)?.nombre).ifBlank { "N/A" }
+        nombreEstado = fixEncoding(db.catalogDao().getEstadoById(propiedad.estado_id)?.nombre).ifBlank { "N/A" }
     }
 
     Card(
@@ -159,7 +160,7 @@ private fun PropiedadAdminCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    propiedad.titulo,
+                    fixEncoding(propiedad.titulo),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -168,7 +169,7 @@ private fun PropiedadAdminCard(
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        propiedad.codigo,
+                        fixEncoding(propiedad.codigo),
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(6.dp)
                     )
@@ -181,13 +182,13 @@ private fun PropiedadAdminCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.LocationOn, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
-                Text(nombreComuna)
+                Text(fixEncoding(nombreComuna))
             }
 
             Spacer(Modifier.height(8.dp))
 
-            Text("Tipo: $nombreTipo")
-            Text("Estado: $nombreEstado")
+            Text("Tipo: ${fixEncoding(nombreTipo)}")
+            Text("Estado: ${fixEncoding(nombreEstado)}")
 
             Spacer(Modifier.height(12.dp))
             Divider()

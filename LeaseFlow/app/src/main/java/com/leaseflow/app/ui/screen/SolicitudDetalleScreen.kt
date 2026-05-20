@@ -21,6 +21,7 @@ import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.repository.ApplicationRemoteRepository
 import com.leaseflow.app.data.repository.DocumentRemoteRepository
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
+import com.leaseflow.app.domain.validation.fixEncoding
 import com.leaseflow.app.ui.viewmodel.SolicitudesViewModel
 import com.leaseflow.app.ui.viewmodel.SolicitudesViewModelFactory
 import java.text.NumberFormat
@@ -239,11 +240,11 @@ fun SolicitudDetalleScreen(
 
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(solicitud.tituloPropiedad ?: "Sin título", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                solicitud.codigoPropiedad?.let { Text("Código: $it", style = MaterialTheme.typography.bodyMedium) }
+                                Text(fixEncoding(solicitud.tituloPropiedad).ifBlank { "Sin título" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                solicitud.codigoPropiedad?.let { Text("Código: ${fixEncoding(it)}", style = MaterialTheme.typography.bodyMedium) }
                                 solicitud.direccionPropiedad?.let {
                                     Spacer(Modifier.height(4.dp))
-                                    Row { Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp)); Text(it, style = MaterialTheme.typography.bodySmall) }
+                                    Row { Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp)); Text(fixEncoding(it), style = MaterialTheme.typography.bodySmall) }
                                 }
                                 Spacer(Modifier.height(8.dp))
                                 solicitud.precioMensual?.let {

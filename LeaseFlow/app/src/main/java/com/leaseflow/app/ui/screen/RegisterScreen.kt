@@ -29,7 +29,6 @@ import com.leaseflow.app.data.model.DocumentosRegistroState
 import com.leaseflow.app.data.model.TipoDocumentoRegistro
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.ui.viewmodel.LeaseFlowAuthViewModel
-import kotlinx.coroutines.launch
 
 /**
  * Pantalla de registro con documentos.
@@ -45,7 +44,6 @@ fun RegisterScreenVm(
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val userPrefs = remember { UserPreferences(context) }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(state.success) {
         if (state.success) {
@@ -54,17 +52,15 @@ fun RegisterScreenVm(
                 val usuario = vm.getLoggedUser()
                 if (usuario != null) {
                     val rolNombre = vm.getRoleName(usuario.rolId ?: 0L)
-                    scope.launch {
-                        userPrefs.saveUserSession(
-                            userId = usuario.id ?: 0L,
-                            email = usuario.email,
-                            name = "${usuario.pnombre} ${usuario.papellido}",
-                            role = rolNombre,
-                            isDuocVip = usuario.duocVip ?: false
-                        )
-                    }
+                    userPrefs.saveUserSession(
+                        userId = usuario.id ?: 0L,
+                        email = usuario.email,
+                        name = "${usuario.pnombre} ${usuario.papellido}",
+                        role = rolNombre,
+                        isDuocVip = usuario.duocVip ?: false
+                    )
                 } else {
-                    scope.launch { userPrefs.setLoggedIn(true) }
+                    userPrefs.setLoggedIn(true)
                 }
                 vm.clearRegisterResult()
                 onRegisteredNavigateHome()

@@ -77,8 +77,6 @@ fun PerfilUsuarioScreen(
     var snombre by rememberSaveable { mutableStateOf("") }
     var papellido by rememberSaveable { mutableStateOf("") }
     var telefono by rememberSaveable { mutableStateOf("") }
-    var direccion by rememberSaveable { mutableStateOf("") }
-    var comuna by rememberSaveable { mutableStateOf("") }
 
     var isEditing by rememberSaveable { mutableStateOf(false) }
     var profilePhotoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
@@ -121,8 +119,6 @@ fun PerfilUsuarioScreen(
             snombre = user.snombre
             papellido = user.papellido
             telefono = user.ntelefono
-            direccion = user.direccion ?: ""
-            comuna = user.comuna ?: ""
             profilePhotoUri = user.fotoPerfil?.let { Uri.parse(it) }
         }
     }
@@ -158,8 +154,6 @@ fun PerfilUsuarioScreen(
                                             snombre = snombre.trim(),
                                             papellido = papellido.trim(),
                                             telefono = telefono.trim(),
-                                            direccion = direccion.trim().ifBlank { null },
-                                            comuna = comuna.trim().ifBlank { null },
                                             fotoUri = profilePhotoUri?.toString()
                                         )
                                         isEditing = false
@@ -340,27 +334,6 @@ fun PerfilUsuarioScreen(
                     )
 
                     Spacer(Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = direccion,
-                        onValueChange = { direccion = it },
-                        label = { Text("Direccion") },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) },
-                        enabled = isEditing
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = comuna,
-                        onValueChange = { comuna = it },
-                        label = { Text("Comuna") },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
-                        enabled = isEditing
-                    )
-
                     Spacer(Modifier.height(24.dp))
                 }
             } else {

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.leaseflow.app.domain.validation.fixEncoding
 import com.leaseflow.app.ui.viewmodel.PropiedadConDistancia
 import com.leaseflow.app.ui.viewmodel.PropiedadViewModel
 import com.leaseflow.app.ui.viewmodel.PropiedadViewModelFactory
@@ -215,7 +216,7 @@ private fun PropiedadCard(
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        propiedad.codigo,
+                        fixEncoding(propiedad.codigo),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall
                     )
@@ -227,7 +228,7 @@ private fun PropiedadCard(
                         shape = MaterialTheme.shapes.small
                     ) {
                         Text(
-                            tipoNombre,
+                            fixEncoding(tipoNombre),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall
                         )
@@ -239,7 +240,7 @@ private fun PropiedadCard(
 
             // Titulo
             Text(
-                propiedad.titulo,
+                fixEncoding(propiedad.titulo),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
@@ -258,7 +259,7 @@ private fun PropiedadCard(
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    propiedadConDistancia.nombreComuna ?: "Comuna",
+                fixEncoding(propiedadConDistancia.nombreComuna) .ifBlank { "Comuna" },
                     style = MaterialTheme.typography.bodyMedium
                 )
 

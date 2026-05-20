@@ -157,20 +157,30 @@ class PropiedadDetalleViewModel(
     private fun mapRemoteToLocal(dto: PropertyRemoteDTO): PropiedadEntity {
         return PropiedadEntity(
             id = dto.id ?: 0L,
-            codigo = dto.codigo,
-            titulo = dto.titulo,
+            codigo = fixEncoding(dto.codigo),
+            titulo = fixEncoding(dto.titulo),
             precio_mensual = dto.precioMensual.toInt(),
             divisa = dto.divisa,
             m2 = dto.m2,
             n_habit = dto.nHabit,
             n_banos = dto.nBanos,
             pet_friendly = dto.petFriendly,
-            direccion = dto.direccion,
+            direccion = fixEncoding(dto.direccion),
             fcreacion = System.currentTimeMillis(),
             estado_id = 1L,
             tipo_id = dto.tipoId,
             comuna_id = dto.comunaId,
-            propietario_id = dto.propietarioId ?: 0L
+            propietario_id = dto.propietarioId?.takeIf { it > 0 }
         )
+    }
+
+    private fun fixEncoding(value: String): String {
+        if (value.isBlank()) return value
+        if (!value.contains('Ã') && !value.contains('Â') && !value.contains('�')) return value
+        return try {
+            String(value.toByteArray(Charsets.ISO_8859_1), Charsets.UTF_8)
+        } catch (_: Exception) {
+            value
+        }
     }
 }

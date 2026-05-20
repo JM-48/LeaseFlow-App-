@@ -23,6 +23,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.domain.validation.fixEncoding
 import com.leaseflow.app.ui.viewmodel.MisPropiedadesViewModel
 import com.leaseflow.app.ui.viewmodel.MisPropiedadesViewModelFactory
 import com.leaseflow.app.ui.viewmodel.PropiedadConInfo
@@ -318,7 +319,7 @@ private fun PropiedadPropietarioCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        propiedad.titulo,
+                        fixEncoding(propiedad.titulo),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -357,7 +358,7 @@ private fun PropiedadPropietarioCard(
                             shape = MaterialTheme.shapes.small
                         ) {
                             Text(
-                                propiedad.codigo,
+                                fixEncoding(propiedad.codigo),
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelSmall
                             )
@@ -376,8 +377,11 @@ private fun PropiedadPropietarioCard(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.width(4.dp))
+                    val comuna = fixEncoding(propiedadConInfo.nombreComuna).trim().takeIf { it.isNotBlank() }
+                    val direccion = fixEncoding(propiedad.direccion).trim().takeIf { it.isNotBlank() }
+                    val ubicacion = listOfNotNull(comuna, direccion).joinToString(" - ")
                     Text(
-                        "${propiedadConInfo.nombreComuna ?: ""} - ${propiedad.direccion}",
+                        ubicacion,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -419,7 +423,7 @@ private fun PropiedadPropietarioCard(
                             shape = MaterialTheme.shapes.small
                         ) {
                             Text(
-                                tipo,
+                                fixEncoding(tipo),
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelSmall
                             )

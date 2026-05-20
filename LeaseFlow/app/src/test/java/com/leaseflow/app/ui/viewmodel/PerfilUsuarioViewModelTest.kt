@@ -131,7 +131,7 @@ class PerfilUsuarioViewModelTest {
     }
 
     @Test
-    fun `actualizarPerfil modifica los datos en memoria y llama a update en la BD`() = runTest {
+    fun `actualizarPerfil llama al microservicio y refresca el usuario local`() = runTest {
         // 1. ARRANGE
         // Usuario Original (CON TODOS LOS CAMPOS OBLIGATORIOS Y GUION BAJO)
         val usuarioOriginal = UsuarioEntity(
@@ -206,9 +206,7 @@ class PerfilUsuarioViewModelTest {
             pnombre = "Editado",
             snombre = "Segundo",
             papellido = "NuevoApellido",
-            telefono = "999999999",
-            direccion = "Calle Nueva 123",
-            comuna = "Santiago"
+            telefono = "999999999"
         )
         advanceUntilIdle()
 
@@ -217,10 +215,7 @@ class PerfilUsuarioViewModelTest {
         val usuarioActual = viewModel.usuario.value
         assertEquals("Editado", usuarioActual?.pnombre)
 
-        // Verificamos llamada a la Base de Datos
-        verify(usuarioDao).update(argThat { usuario ->
-            usuario.pnombre == "Editado" &&
-                    usuario.papellido == "NuevoApellido"
-        })
+        verify(userRemoteRepository).actualizarUsuario(eq(1L), any())
+        verify(localUserRepository, atLeastOnce()).syncUsuarioFromRemote(any())
     }
 }

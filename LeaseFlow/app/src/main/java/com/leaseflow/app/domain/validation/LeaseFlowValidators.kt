@@ -163,3 +163,13 @@ fun validateNumero(numero: String, campo: String): String? {
         else -> null
     }
 }
+
+fun fixEncoding(value: String?): String {
+    if (value.isNullOrBlank()) return value.orEmpty()
+    val looksBroken = value.contains('Ã') || value.contains('Â') || value.contains('�')
+    if (!looksBroken) return value
+    return runCatching {
+        val bytes = value.toByteArray(Charsets.ISO_8859_1)
+        String(bytes, Charsets.UTF_8)
+    }.getOrDefault(value)
+}

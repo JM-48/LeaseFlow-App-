@@ -74,5 +74,5 @@ data class PropiedadEntity(
     val estado_id: Long,              // FK a estado (Activa/Inactiva)
     val tipo_id: Long,                // FK a tipo (Departamento/Casa/etc)
     val comuna_id: Long,              // FK a comuna
-    val propietario_id: Long          // ✅ FK al usuario propietario
+    val propietario_id: Long?         // ✅ FK al usuario propietario (puede venir null/0 desde backend)
 )

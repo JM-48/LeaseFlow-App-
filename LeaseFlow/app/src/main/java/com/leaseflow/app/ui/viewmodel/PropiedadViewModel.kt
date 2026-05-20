@@ -53,10 +53,11 @@ class PropiedadViewModel(
     private val _ubicacionUsuario = MutableStateFlow<Pair<Double, Double>?>(null)
     val ubicacionUsuario: StateFlow<Pair<Double, Double>?> = _ubicacionUsuario.asStateFlow()
 
+    private val catalogosJob = viewModelScope.launch {
+        sincronizarCatalogos()
+    }
+
     init {
-        viewModelScope.launch {
-            sincronizarCatalogos()
-        }
     }
 
     fun setPermisoUbicacion(concedido: Boolean) {
@@ -81,6 +82,7 @@ class PropiedadViewModel(
             _errorMsg.value = null
 
             try {
+                catalogosJob.join()
                 when (val result = remoteRepository.listarTodasPropiedades(includeDetails = false)) {
                     is ApiResult.Success -> {
                         Log.d(TAG, "Propiedades cargadas: ${result.data.size}")
@@ -133,7 +135,7 @@ class PropiedadViewModel(
                             estado_id = 0L,
                             tipo_id = 0L,
                             comuna_id = 0L,
-                            propietario_id = 0L,
+                            propietario_id = null,
                             descripcion = null // Si 'descripcion' acepta null
                         )
 
@@ -162,30 +164,49 @@ class PropiedadViewModel(
      */
     private suspend fun guardarYActualizarLocal(dtos: List<PropertyRemoteDTO>) {
         withContext(Dispatchers.IO) {
+            val estadoActivoId = catalogDao.getEstadoByNombre("Activo")?.id ?: 1L
             val entities = dtos.map { dto ->
                 PropiedadEntity(
                     id = dto.id ?: 0,
-                    codigo = dto.codigo ?: "",
-                    titulo = dto.titulo ?: "",
+                    codigo = fixEncoding(dto.codigo ?: ""),
+                    titulo = fixEncoding(dto.titulo ?: ""),
                     precio_mensual = dto.precioMensual?.toInt() ?: 0,
                     divisa = dto.divisa ?: "CLP",
                     m2 = dto.m2 ?: 0.0,
                     n_habit = dto.nHabit ?: 0,
                     n_banos = dto.nBanos ?: 0,
                     pet_friendly = dto.petFriendly ?: false,
-                    direccion = dto.direccion ?: "",
+                    direccion = fixEncoding(dto.direccion ?: ""),
                     descripcion = null,
                     fcreacion = System.currentTimeMillis(),
-                    estado_id = 1L,
+                    estado_id = estadoActivoId,
                     tipo_id = dto.tipoId ?: 1L,
                     comuna_id = dto.comunaId ?: 1L,
-                    propietario_id = dto.propietarioId ?: 1L
+                    propietario_id = dto.propietarioId?.takeIf { it > 0 }
                 )
             }
 
-            propiedadDao.insertAll(entities)
+            try {
+                propiedadDao.insertAll(entities)
+                cargarPropiedadesLocales()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error guardando propiedades en BD local: ${e.message}", e)
+                _errorMsg.value = "No se pudo guardar en BD local, mostrando datos remotos"
+                cargarPropiedadesDesdeRemoto(entities)
+            }
+        }
+    }
 
-            cargarPropiedadesLocales()
+    private suspend fun cargarPropiedadesDesdeRemoto(entities: List<PropiedadEntity>) {
+        withContext(Dispatchers.IO) {
+            _propiedades.value = entities.map { propiedad ->
+                PropiedadConDistancia(
+                    propiedad = propiedad,
+                    distanciaKm = null,
+                    nombreComuna = catalogDao.getComunaById(propiedad.comuna_id)?.nombre,
+                    nombreTipo = catalogDao.getTipoById(propiedad.tipo_id)?.nombre
+                )
+            }
         }
     }
 
