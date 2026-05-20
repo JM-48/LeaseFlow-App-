@@ -9,10 +9,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.leaseflow.app.ui.viewmodel.SolicitudConDatos
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -27,6 +30,7 @@ fun SolicitudCard(
     onClick: () -> Unit = {},
     mostrarSolicitante: Boolean = false,
     onActualizarEstado: ((String) -> Unit)? = null,
+    onCancelarSolicitud: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -41,6 +45,20 @@ fun SolicitudCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            solicitudConDatos.fotoUrl?.let { fotoUrl ->
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(fotoUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Foto propiedad",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
             // Titulo y Estado
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -56,6 +74,27 @@ fun SolicitudCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 EstadoChip(estado = solicitudConDatos.nombreEstado ?: "PENDIENTE")
+            }
+
+            solicitudConDatos.direccionPropiedad?.takeIf { it.isNotBlank() }?.let { direccion ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = "Direccion",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = direccion,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             // Codigo y Fecha
@@ -220,35 +259,21 @@ fun SolicitudCard(
                     }
                 }
             }
+
+            if (onCancelarSolicitud != null && solicitudConDatos.nombreEstado == "PENDIENTE") {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                OutlinedButton(
+                    onClick = onCancelarSolicitud,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(Icons.Default.Cancel, null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Cancelar Solicitud")
+                }
+            }
         }
-    }
-}
-
-@Composable
-private fun EstadoChip(estado: String) {
-    val (backgroundColor, textColor) = when (estado.uppercase()) {
-        "PENDIENTE" -> Pair(Color(0xFFFFF3E0), Color(0xFFE65100))
-        "ACEPTADA", "APROBADA" -> Pair(Color(0xFFE8F5E9), Color(0xFF2E7D32))
-        "RECHAZADA" -> Pair(Color(0xFFFFEBEE), Color(0xFFC62828))
-        else -> Pair(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-
-    val displayText = when (estado.uppercase()) {
-        "ACEPTADA", "APROBADA" -> "Aceptada"
-        "RECHAZADA" -> "Rechazada"
-        "PENDIENTE" -> "Pendiente"
-        else -> estado
-    }
-
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = backgroundColor
-    ) {
-        Text(
-            text = displayText,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = textColor
-        )
     }
 }

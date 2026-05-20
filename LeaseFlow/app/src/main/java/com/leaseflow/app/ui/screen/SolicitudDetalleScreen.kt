@@ -17,7 +17,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.leaseflow.app.data.local.LeaseFlowDatabase
 import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.repository.ApplicationRemoteRepository
+import com.leaseflow.app.data.repository.DocumentRemoteRepository
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
 import com.leaseflow.app.ui.viewmodel.SolicitudesViewModel
 import com.leaseflow.app.ui.viewmodel.SolicitudesViewModelFactory
@@ -82,6 +84,25 @@ fun SolicitudDetalleScreen(
         "ADMINISTRADOR" -> ROL_ADMIN
         "PROPIETARIO" -> ROL_PROPIETARIO
         else -> ROL_ARRIENDATARIO
+    }
+
+    val documentRepository = remember { DocumentRemoteRepository() }
+    var docsAprobados by remember { mutableStateOf<Boolean?>(null) }
+    var docsLoading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(rolId, solicitudSeleccionada?.solicitud?.usuarios_id) {
+        if (rolId != ROL_ARRIENDATARIO) {
+            val solicitanteId = solicitudSeleccionada?.solicitud?.usuarios_id ?: return@LaunchedEffect
+            docsLoading = true
+            docsAprobados = when (val result = documentRepository.verificarDocumentosAprobados(solicitanteId)) {
+                is ApiResult.Success -> result.data
+                else -> null
+            }
+            docsLoading = false
+        } else {
+            docsAprobados = null
+            docsLoading = false
+        }
     }
 
     var showRechazarDialog by remember { mutableStateOf(false) }
@@ -249,6 +270,20 @@ fun SolicitudDetalleScreen(
                                     }
                                     solicitud.telefonoSolicitante?.let {
                                         Spacer(Modifier.height(4.dp)); Row { Icon(Icons.Default.Phone, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text(it) }
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Verified, null, Modifier.size(20.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = when {
+                                                docsLoading -> "Verificando documentos..."
+                                                docsAprobados == true -> "Documentos validados"
+                                                docsAprobados == false -> "Documentos sin validar"
+                                                else -> "Documentos: sin información"
+                                            },
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
                                     }
                                 }
                             }

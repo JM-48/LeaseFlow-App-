@@ -94,6 +94,24 @@ class PropertyRemoteRepository {
         }
     }
 
+    suspend fun listarPropiedadesPorUsuario(
+        usuarioId: Long,
+        includeDetails: Boolean = false
+    ): ApiResult<List<PropertyRemoteDTO>> {
+        Log.d(TAG, "Listando propiedades por usuario: usuarioId=$usuarioId, includeDetails=$includeDetails")
+        return when (val result = safeApiCall { api.listarPropiedadesPorUsuario(usuarioId, includeDetails) }) {
+            is ApiResult.Success -> {
+                Log.d(TAG, "Propiedades obtenidas: ${result.data.size}")
+                result
+            }
+            is ApiResult.Error -> {
+                Log.e(TAG, "Error al listar propiedades: ${result.message}")
+                result
+            }
+            else -> result
+        }
+    }
+
     /**
      * Obtener propiedad por ID
      */
@@ -409,6 +427,12 @@ class PropertyRemoteRepository {
     private fun parsePhotoError(rawMessage: String, code: Int?): String {
         Log.d(TAG, "Parseando error foto: code=$code, message=$rawMessage")
 
+        val normalized = rawMessage.lowercase()
+        val seemsLimitError =
+            (normalized.contains("maximo") || normalized.contains("máximo") || normalized.contains("limite") || normalized.contains("límite") || normalized.contains("limit") || normalized.contains("max")) &&
+                (normalized.contains("20") || normalized.contains("veinte")) &&
+                (normalized.contains("foto") || normalized.contains("fotos") || normalized.contains("imagen") || normalized.contains("imagenes") || normalized.contains("image") || normalized.contains("photo"))
+
         return when (code) {
             400 -> {
                 when {
@@ -425,16 +449,14 @@ class PropertyRemoteRepository {
                             rawMessage.contains("grande", ignoreCase = true) ->
                         "El archivo es muy grande. Maximo 10MB"
 
-                    rawMessage.contains("maximo", ignoreCase = true) ||
-                            rawMessage.contains("limite", ignoreCase = true) ||
-                            rawMessage.contains("20", ignoreCase = true) ->
+                    seemsLimitError ->
                         "Has alcanzado el limite de 20 fotos por propiedad"
 
-                    else -> "Error al subir foto: $rawMessage"
+                    else -> rawMessage.ifBlank { "Error al subir foto" }
                 }
             }
             404 -> "Foto o propiedad no encontrada"
-            else -> rawMessage
+            else -> rawMessage.ifBlank { "Error al subir foto" }
         }
     }
 }

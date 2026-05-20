@@ -17,8 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.leaseflow.app.data.local.LeaseFlowDatabase
-import com.leaseflow.app.data.local.entities.UsuarioEntity
 import com.leaseflow.app.data.remote.RetrofitClient
+import com.leaseflow.app.data.repository.ApplicationRemoteRepository
+import com.leaseflow.app.data.repository.PropertyRemoteRepository
 import com.leaseflow.app.data.repository.UserRepository
 import com.leaseflow.app.ui.viewmodel.AdminPanelViewModel
 import com.leaseflow.app.ui.viewmodel.AdminPanelViewModelFactory
@@ -34,15 +35,29 @@ import com.leaseflow.app.ui.viewmodel.UserManagementViewModelFactory
 fun AdminPanelScreen(
     onBack: () -> Unit,
     onGestionPropiedades: () -> Unit,
-    currentUser: UsuarioEntity? // Usuario actualmente logeado
+    onGestionDocumentos: () -> Unit,
+    onGestionContacto: () -> Unit
 ) {
     val context = LocalContext.current
     val db = LeaseFlowDatabase.getInstance(context)
+    val prefs = context.getSharedPreferences("LeaseFlowPrefs", 0)
+    val currentRol = prefs.getLong("currentUserRolId", -1L)
+    val isAdmin = currentRol == 1L
+
+    val userRepository = remember { UserRepository(RetrofitClient.userServiceApi) }
+    val propertyRepository = remember { PropertyRemoteRepository() }
+    val applicationRepository = remember {
+        ApplicationRemoteRepository(
+            solicitudDao = db.solicitudDao(),
+            catalogDao = db.catalogDao()
+        )
+    }
+
     val vm: AdminPanelViewModel = viewModel(
         factory = AdminPanelViewModelFactory(
-            db.usuarioDao(),
-            db.propiedadDao(),
-            db.solicitudDao()
+            userRepository,
+            propertyRepository,
+            applicationRepository
         )
     )
 
@@ -201,7 +216,7 @@ fun AdminPanelScreen(
                         Spacer(Modifier.height(12.dp))
 
                         // --- Solo el admin ve estas acciones ---
-                        if (currentUser?.rol_id == 1L) { // 1 = ADMIN
+                        if (isAdmin) {
                             ActionCard(
                                 title = "Gestión de Usuarios",
                                 description = "Administrar usuarios, roles y permisos",
@@ -216,6 +231,24 @@ fun AdminPanelScreen(
                                 description = "Ver y administrar todas las propiedades publicadas",
                                 icon = Icons.Filled.Business,
                                 onClick = onGestionPropiedades
+                            )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            ActionCard(
+                                title = "Gestión de Documentos",
+                                description = "Aprobar o rechazar documentación cargada",
+                                icon = Icons.Filled.Description,
+                                onClick = onGestionDocumentos
+                            )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            ActionCard(
+                                title = "Gestión de Contacto",
+                                description = "Ver y responder mensajes de Contáctanos",
+                                icon = Icons.Filled.ContactMail,
+                                onClick = onGestionContacto
                             )
                         }
 

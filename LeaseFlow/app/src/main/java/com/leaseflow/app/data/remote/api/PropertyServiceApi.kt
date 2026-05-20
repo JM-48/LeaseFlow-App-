@@ -17,6 +17,12 @@ interface PropertyServiceApi {
         @Query("includeDetails") includeDetails: Boolean = false
     ): Response<List<PropertyRemoteDTO>>
 
+    @GET("api/propiedades/usuario/{usuarioId}")
+    suspend fun listarPropiedadesPorUsuario(
+        @Path("usuarioId") usuarioId: Long,
+        @Query("includeDetails") includeDetails: Boolean = false
+    ): Response<List<PropertyRemoteDTO>>
+
     @GET("api/propiedades/{id}")
     suspend fun obtenerPropiedadPorId(
         @Path("id") id: Long,

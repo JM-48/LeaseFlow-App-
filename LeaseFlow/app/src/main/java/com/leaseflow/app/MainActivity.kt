@@ -93,7 +93,9 @@ class MainActivity : ComponentActivity() {
                         factory = PerfilUsuarioViewModelFactory(
                             usuarioDao = db.usuarioDao(),
                             catalogDao = db.catalogDao(),
-                            solicitudDao = db.solicitudDao()
+                            solicitudDao = db.solicitudDao(),
+                            userRemoteRepository = userRemoteRepository,
+                            localUserRepository = leaseFlowUserRepository
                         )
                     )
 

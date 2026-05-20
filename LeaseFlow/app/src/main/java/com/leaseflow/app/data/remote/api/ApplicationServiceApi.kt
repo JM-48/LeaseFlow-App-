@@ -69,6 +69,11 @@ interface ApplicationServiceApi {
         @Query("estado") estado: String  // PENDIENTE, ACEPTADA, RECHAZADA
     ): Response<SolicitudArriendoDTO>
 
+    @DELETE("api/solicitudes/{id}")
+    suspend fun eliminarSolicitud(
+        @Path("id") id: Long
+    ): Response<Void>
+
     // ==================== REGISTROS ====================
 
     /**

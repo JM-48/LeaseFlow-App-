@@ -173,10 +173,8 @@ class AgregarPropiedadViewModel(
      * Crear nueva propiedad
      */
     fun crearPropiedad(
-        codigo: String,
         titulo: String,
         precioMensual: Double,
-        divisa: String,
         m2: Double,
         nHabit: Int,
         nBanos: Int,
@@ -191,13 +189,14 @@ class AgregarPropiedadViewModel(
             _errorMsg.value = null
 
             try {
-                Log.d(TAG, "Creando propiedad: codigo=$codigo, titulo=$titulo")
+                val codigoGenerado = generarCodigo(tipoId)
+                Log.d(TAG, "Creando propiedad: codigo=$codigoGenerado, titulo=$titulo")
 
                 when (val result = propertyRepository.crearPropiedad(
-                    codigo = codigo,
+                    codigo = codigoGenerado,
                     titulo = titulo,
                     precioMensual = precioMensual,
-                    divisa = divisa,
+                    divisa = "CLP",
                     m2 = m2,
                     nHabit = nHabit,
                     nBanos = nBanos,
@@ -225,6 +224,23 @@ class AgregarPropiedadViewModel(
                 _isSaving.value = false
             }
         }
+    }
+
+    private fun generarCodigo(tipoId: Long): String {
+        val tipoNombre = _tipos.value.firstOrNull { it.id == tipoId }?.nombre?.trim().orEmpty()
+        val normalized = tipoNombre.uppercase()
+        val prefix = when {
+            "DEPART" in normalized -> "DP"
+            "CASA" in normalized -> "CA"
+            "OFIC" in normalized -> "OF"
+            "BODEG" in normalized -> "BD"
+            "TERREN" in normalized -> "TR"
+            "PARCEL" in normalized -> "PA"
+            normalized.length >= 2 && normalized.take(2).all { it.isLetter() } -> normalized.take(2)
+            else -> "PR"
+        }
+        val digits = (1000..9999).random()
+        return "$prefix-$digits"
     }
 
     /**

@@ -54,8 +54,6 @@ private fun getImageUriForFile(context: Context, file: File): Uri {
 fun PerfilUsuarioScreen(
     vm: PerfilUsuarioViewModel,
     onBack: () -> Unit,
-    onVerSolicitudes: () -> Unit,
-    onVerDocumentos: () -> Unit,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -65,6 +63,8 @@ fun PerfilUsuarioScreen(
     val userId by userPrefs.userId.collectAsStateWithLifecycle(initialValue = null)
     val usuario by vm.usuario.collectAsStateWithLifecycle()
     val isLoading by vm.isLoading.collectAsStateWithLifecycle()
+    val isSaving by vm.isSaving.collectAsStateWithLifecycle()
+    val errorMsg by vm.errorMsg.collectAsStateWithLifecycle()
 
     LaunchedEffect(userId) {
         userId?.let { vm.cargarDatosUsuario(it) }
@@ -80,6 +80,7 @@ fun PerfilUsuarioScreen(
     var direccion by rememberSaveable { mutableStateOf("") }
     var comuna by rememberSaveable { mutableStateOf("") }
 
+    var isEditing by rememberSaveable { mutableStateOf(false) }
     var profilePhotoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var pendingCaptureUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -122,6 +123,7 @@ fun PerfilUsuarioScreen(
             telefono = user.ntelefono
             direccion = user.direccion ?: ""
             comuna = user.comuna ?: ""
+            profilePhotoUri = user.fotoPerfil?.let { Uri.parse(it) }
         }
     }
 
@@ -142,6 +144,35 @@ fun PerfilUsuarioScreen(
                     }
                 },
                 actions = {
+                    if (userId != null) {
+                        IconButton(
+                            onClick = {
+                                if (!isEditing) {
+                                    isEditing = true
+                                } else {
+                                    val uid = userId ?: return@IconButton
+                                    scope.launch {
+                                        vm.actualizarPerfil(
+                                            usuarioId = uid,
+                                            pnombre = pnombre.trim(),
+                                            snombre = snombre.trim(),
+                                            papellido = papellido.trim(),
+                                            telefono = telefono.trim(),
+                                            direccion = direccion.trim().ifBlank { null },
+                                            comuna = comuna.trim().ifBlank { null },
+                                            fotoUri = profilePhotoUri?.toString()
+                                        )
+                                        isEditing = false
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (isEditing) Icons.Filled.Save else Icons.Filled.Edit,
+                                contentDescription = if (isEditing) "Guardar" else "Editar"
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = {
                             scope.launch {
@@ -164,6 +195,23 @@ fun PerfilUsuarioScreen(
         ) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (errorMsg != null && usuario == null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = errorMsg ?: "No se pudo cargar el perfil",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = { userId?.let { vm.cargarDatosUsuario(it) } }) {
+                        Text("Reintentar")
+                    }
+                }
             } else if (usuario != null) {
                 Column(
                     modifier = Modifier
@@ -182,6 +230,7 @@ fun PerfilUsuarioScreen(
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.primaryContainer)
                                 .clickable {
+                                    if (!isEditing) return@clickable
                                     // ====================================================================
                                     // 3. LÓGICA DE SOLICITUD DE PERMISO <-- AGREGADO
                                     val permissionCheck = ContextCompat.checkSelfPermission(
@@ -240,81 +289,6 @@ fun PerfilUsuarioScreen(
 
                     Spacer(Modifier.height(24.dp))
 
-                    // Accesos rapidos
-                    Text(
-                        text = "Accesos rapidos",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Boton Mis Documentos
-                        Card(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { onVerDocumentos() },
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    Icons.Filled.Description,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    "Mis Documentos",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-
-                        // Boton Mis Solicitudes
-                        Card(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { onVerSolicitudes() },
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    Icons.Filled.Assignment,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                    tint = MaterialTheme.colorScheme.secondary
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    "Mis Solicitudes",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(24.dp))
-
                     // Campos editables
                     Text(
                         text = "Informacion personal",
@@ -328,7 +302,8 @@ fun PerfilUsuarioScreen(
                         onValueChange = { pnombre = it },
                         label = { Text("Primer nombre") },
                         modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        enabled = isEditing
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -336,9 +311,10 @@ fun PerfilUsuarioScreen(
                     OutlinedTextField(
                         value = snombre,
                         onValueChange = { snombre = it },
-                        label = { Text("Segundo nombre (opcional)") },
+                        label = { Text("Segundo nombre") },
                         modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        enabled = isEditing
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -348,7 +324,8 @@ fun PerfilUsuarioScreen(
                         onValueChange = { papellido = it },
                         label = { Text("Apellido") },
                         modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        enabled = isEditing
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -358,7 +335,8 @@ fun PerfilUsuarioScreen(
                         onValueChange = { telefono = it },
                         label = { Text("Telefono") },
                         modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) }
+                        leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                        enabled = isEditing
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -368,7 +346,8 @@ fun PerfilUsuarioScreen(
                         onValueChange = { direccion = it },
                         label = { Text("Direccion") },
                         modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) }
+                        leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) },
+                        enabled = isEditing
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -378,35 +357,41 @@ fun PerfilUsuarioScreen(
                         onValueChange = { comuna = it },
                         label = { Text("Comuna") },
                         modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) }
+                        leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                        enabled = isEditing
                     )
 
                     Spacer(Modifier.height(24.dp))
-
-                    // Boton guardar
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Debes iniciar sesion para ver tu perfil")
+                    Spacer(Modifier.height(12.dp))
                     Button(
                         onClick = {
                             scope.launch {
-                                vm.actualizarPerfil(
-                                    pnombre = pnombre,
-                                    snombre = snombre,
-                                    papellido = papellido,
-                                    telefono = telefono,
-                                    direccion = direccion.ifBlank { null },
-                                    comuna = comuna.ifBlank { null },
-                                    fotoUri = profilePhotoUri?.toString()
-                                )
-                                Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
+                                userPrefs.clearUserSession()
+                                onLogout()
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                        }
                     ) {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Guardar cambios")
+                        Text("Ir a inicio")
                     }
+                }
+            }
 
-                    Spacer(Modifier.height(24.dp))
+            if (isSaving) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
             }
         }

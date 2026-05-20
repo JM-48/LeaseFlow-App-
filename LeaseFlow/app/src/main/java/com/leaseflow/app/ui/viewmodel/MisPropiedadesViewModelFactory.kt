@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.leaseflow.app.data.local.dao.PropiedadDao
 import com.leaseflow.app.data.local.dao.CatalogDao
+import com.leaseflow.app.data.repository.ApplicationRemoteRepository
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
 
 /**
@@ -12,7 +13,8 @@ import com.leaseflow.app.data.repository.PropertyRemoteRepository
 class MisPropiedadesViewModelFactory(
     private val propiedadDao: PropiedadDao,
     private val catalogDao: CatalogDao,
-    private val propertyRepository: PropertyRemoteRepository
+    private val propertyRepository: PropertyRemoteRepository,
+    private val applicationRepository: ApplicationRemoteRepository
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -21,7 +23,8 @@ class MisPropiedadesViewModelFactory(
             return MisPropiedadesViewModel(
                 propiedadDao,
                 catalogDao,
-                propertyRepository
+                propertyRepository,
+                applicationRepository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

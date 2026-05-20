@@ -25,6 +25,7 @@ import com.leaseflow.app.ui.viewmodel.SolicitudesViewModelFactory
 fun SolicitudesScreen(
     userPreferences: UserPreferences,
     viewModelFactory: SolicitudesViewModelFactory,
+    mode: SolicitudesMode = SolicitudesMode.AUTO,
     onNavigateToDetalle: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -43,7 +44,20 @@ fun SolicitudesScreen(
 
     // Variables locales
     val currentUserId = userId
-    val currentRoleId = userRoleId ?: 3  // Default: ARRIENDATARIO (3)
+    val currentRoleId = userRoleId ?: 3
+
+    val effectiveMode = remember(mode, currentRoleId) {
+        when (mode) {
+            SolicitudesMode.AUTO -> {
+                when (currentRoleId) {
+                    1 -> SolicitudesMode.PERSONAL
+                    2 -> SolicitudesMode.RECIBIDAS
+                    else -> SolicitudesMode.PERSONAL
+                }
+            }
+            else -> mode
+        }
+    }
 
     // Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
@@ -53,11 +67,11 @@ fun SolicitudesScreen(
     // =====================================================================
     LaunchedEffect(currentUserId, currentRoleId) {
         currentUserId?.let { id ->
-            when (currentRoleId) {
-                1 -> viewModel.cargarTodasSolicitudes() // Admin
-                2 -> viewModel.cargarSolicitudesPropietario(id) // Propietario
-                3 -> viewModel.cargarSolicitudesArrendatario(id) // Arrendatario
-                else -> viewModel.cargarSolicitudesArrendatario(id)
+            when (effectiveMode) {
+                SolicitudesMode.ADMIN_GLOBAL -> viewModel.cargarTodasSolicitudes()
+                SolicitudesMode.RECIBIDAS -> viewModel.cargarSolicitudesPropietario(id)
+                SolicitudesMode.PERSONAL -> viewModel.cargarSolicitudesArrendatario(id)
+                SolicitudesMode.AUTO -> viewModel.cargarSolicitudesArrendatario(id)
             }
         }
     }
@@ -72,19 +86,20 @@ fun SolicitudesScreen(
             viewModel.clearSuccess()
             // Recargar lista después de una acción exitosa
             currentUserId?.let { id ->
-                when (currentRoleId) {
-                    1 -> viewModel.cargarTodasSolicitudes()
-                    2 -> viewModel.cargarSolicitudesPropietario(id)
-                    3 -> viewModel.cargarSolicitudesArrendatario(id)
+                when (effectiveMode) {
+                    SolicitudesMode.ADMIN_GLOBAL -> viewModel.cargarTodasSolicitudes()
+                    SolicitudesMode.RECIBIDAS -> viewModel.cargarSolicitudesPropietario(id)
+                    SolicitudesMode.PERSONAL -> viewModel.cargarSolicitudesArrendatario(id)
+                    SolicitudesMode.AUTO -> viewModel.cargarSolicitudesArrendatario(id)
                 }
             }
         }
     }
 
     // Titulo según rol
-    val titulo = when (currentRoleId) {
-        1 -> "Todas las Solicitudes"
-        2 -> "Solicitudes Recibidas"
+    val titulo = when (effectiveMode) {
+        SolicitudesMode.ADMIN_GLOBAL -> "Gestión de Solicitudes"
+        SolicitudesMode.RECIBIDAS -> "Solicitudes Recibidas"
         else -> "Mis Solicitudes"
     }
 
@@ -97,10 +112,11 @@ fun SolicitudesScreen(
                         onClick = {
                             // CORRECCIÓN: Recargar usando la lógica correcta
                             currentUserId?.let { id ->
-                                when (currentRoleId) {
-                                    1 -> viewModel.cargarTodasSolicitudes()
-                                    2 -> viewModel.cargarSolicitudesPropietario(id)
-                                    3 -> viewModel.cargarSolicitudesArrendatario(id)
+                                when (effectiveMode) {
+                                    SolicitudesMode.ADMIN_GLOBAL -> viewModel.cargarTodasSolicitudes()
+                                    SolicitudesMode.RECIBIDAS -> viewModel.cargarSolicitudesPropietario(id)
+                                    SolicitudesMode.PERSONAL -> viewModel.cargarSolicitudesArrendatario(id)
+                                    SolicitudesMode.AUTO -> viewModel.cargarSolicitudesArrendatario(id)
                                 }
                             }
                         }
@@ -174,9 +190,9 @@ fun SolicitudesScreen(
                         items(items = solicitudes, key = { it.solicitud.id }) { solicitudConDatos ->
 
                             // Determinar si puede gestionar (Solo admin o propietario si está PENDIENTE)
-                            val puedeGestionar = when (currentRoleId) {
-                                1 -> true // Admin
-                                2 -> solicitudConDatos.nombreEstado == "PENDIENTE" // Propietario
+                            val puedeGestionar = when (effectiveMode) {
+                                SolicitudesMode.ADMIN_GLOBAL -> true
+                                SolicitudesMode.RECIBIDAS -> solicitudConDatos.nombreEstado == "PENDIENTE"
                                 else -> false
                             }
 
@@ -186,7 +202,14 @@ fun SolicitudesScreen(
                             SolicitudCard(
                                 solicitudConDatos = solicitudConDatos,
                                 onClick = { onNavigateToDetalle(solicitudConDatos.solicitud.propiedad_id) },
-                                mostrarSolicitante = currentRoleId != 3,
+                                mostrarSolicitante = effectiveMode != SolicitudesMode.PERSONAL,
+                                onCancelarSolicitud = if (effectiveMode == SolicitudesMode.PERSONAL && solicitudConDatos.nombreEstado == "PENDIENTE") {
+                                    {
+                                        currentUserId?.let { uid ->
+                                            viewModel.cancelarSolicitud(solicitudConDatos.solicitud.id, uid)
+                                        }
+                                    }
+                                } else null,
                                 onActualizarEstado = if (puedeGestionar) {
                                     { nuevoEstado ->
                                         if (nuevoEstado == "ACEPTADA" || nuevoEstado == "APROBADA") {
@@ -209,6 +232,13 @@ fun SolicitudesScreen(
             }
         }
     }
+}
+
+enum class SolicitudesMode {
+    AUTO,
+    PERSONAL,
+    RECIBIDAS,
+    ADMIN_GLOBAL
 }
 
 @Composable

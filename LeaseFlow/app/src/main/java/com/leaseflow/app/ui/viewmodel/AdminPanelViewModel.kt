@@ -3,12 +3,12 @@ package com.leaseflow.app.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.leaseflow.app.data.local.dao.PropiedadDao
-import com.leaseflow.app.data.local.dao.SolicitudDao
-import com.leaseflow.app.data.local.dao.UsuarioDao
+import com.leaseflow.app.data.remote.ApiResult
+import com.leaseflow.app.data.repository.ApplicationRemoteRepository
+import com.leaseflow.app.data.repository.PropertyRemoteRepository
+import com.leaseflow.app.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -25,9 +25,9 @@ data class EstadisticasSistema(
  * ViewModel para el Panel de Administración
  */
 class AdminPanelViewModel(
-    private val usuarioDao: UsuarioDao,
-    private val propiedadDao: PropiedadDao,
-    private val solicitudDao: SolicitudDao
+    private val userRepository: UserRepository,
+    private val propertyRepository: PropertyRemoteRepository,
+    private val applicationRepository: ApplicationRemoteRepository
 ) : ViewModel() {
 
     private val _estadisticas = MutableStateFlow(EstadisticasSistema())
@@ -44,13 +44,30 @@ class AdminPanelViewModel(
             _isLoading.value = true
 
             try {
-                val totalUsuarios = usuarioDao.count()
-                val totalPropiedades = propiedadDao.getAll().size
-                val propiedadesActivas = propiedadDao.countActivas()
+                val totalUsuarios = when (val usersResult = userRepository.getUsers()) {
+                    is ApiResult.Success -> usersResult.data.size
+                    else -> 0
+                }
 
-                // Usar el método correcto del DAO
-                val totalSolicitudes = solicitudDao.getAll().first().size
+                val propiedades = when (val propResult = propertyRepository.listarTodasPropiedades(includeDetails = false)) {
+                    is ApiResult.Success -> propResult.data
+                    else -> emptyList()
+                }
 
+                val solicitudes = when (val solResult = applicationRepository.listarTodasSolicitudes(includeDetails = false)) {
+                    is ApiResult.Success -> solResult.data
+                    else -> emptyList()
+                }
+
+                val totalPropiedades = propiedades.size
+                val totalSolicitudes = solicitudes.size
+
+                val estadosActivos = setOf("ACEPTADA", "APROBADA", "VIGENTE")
+                val propiedadesActivas = solicitudes
+                    .filter { dto -> dto.estado?.uppercase() in estadosActivos }
+                    .map { dto -> dto.propiedadId }
+                    .toSet()
+                    .size
 
                 _estadisticas.value = EstadisticasSistema(
                     totalUsuarios = totalUsuarios,
@@ -59,7 +76,6 @@ class AdminPanelViewModel(
                     totalSolicitudes = totalSolicitudes
                 )
             } catch (e: Exception) {
-                // Log optional
             } finally {
                 _isLoading.value = false
             }
@@ -71,14 +87,14 @@ class AdminPanelViewModel(
  * Factory para AdminPanelViewModel
  */
 class AdminPanelViewModelFactory(
-    private val usuarioDao: UsuarioDao,
-    private val propiedadDao: PropiedadDao,
-    private val solicitudDao: SolicitudDao
+    private val userRepository: UserRepository,
+    private val propertyRepository: PropertyRemoteRepository,
+    private val applicationRepository: ApplicationRemoteRepository
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AdminPanelViewModel::class.java)) {
-            return AdminPanelViewModel(usuarioDao, propiedadDao, solicitudDao) as T
+            return AdminPanelViewModel(userRepository, propertyRepository, applicationRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

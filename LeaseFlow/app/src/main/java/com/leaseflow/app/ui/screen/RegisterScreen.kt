@@ -23,32 +23,63 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.model.DocumentoRegistro
 import com.leaseflow.app.data.model.DocumentosRegistroState
 import com.leaseflow.app.data.model.TipoDocumentoRegistro
+import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.ui.viewmodel.LeaseFlowAuthViewModel
+import kotlinx.coroutines.launch
 
 /**
- * Pantalla de registro con documentos y segundo nombre opcional.
+ * Pantalla de registro con documentos.
  */
 @Composable
 fun RegisterScreenVm(
     vm: LeaseFlowAuthViewModel,
-    onRegisteredNavigateLogin: () -> Unit,
+    onRegisteredNavigateHome: () -> Unit,
     onGoLogin: () -> Unit
 ) {
     val state by vm.register.collectAsStateWithLifecycle()
     val documentosState by vm.documentosRegistro.collectAsStateWithLifecycle()
 
-    if (state.success) {
-        vm.clearRegisterResult()
-        onRegisteredNavigateLogin()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val userPrefs = remember { UserPreferences(context) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(state.success) {
+        if (state.success) {
+            val loginResult = vm.loginDirect(state.email, state.pass)
+            if (loginResult is ApiResult.Success) {
+                val usuario = vm.getLoggedUser()
+                if (usuario != null) {
+                    val rolNombre = vm.getRoleName(usuario.rolId ?: 0L)
+                    scope.launch {
+                        userPrefs.saveUserSession(
+                            userId = usuario.id ?: 0L,
+                            email = usuario.email,
+                            name = "${usuario.pnombre} ${usuario.papellido}",
+                            role = rolNombre,
+                            isDuocVip = usuario.duocVip ?: false
+                        )
+                    }
+                } else {
+                    scope.launch { userPrefs.setLoggedIn(true) }
+                }
+                vm.clearRegisterResult()
+                onRegisteredNavigateHome()
+            } else {
+                vm.clearRegisterResult()
+                onGoLogin()
+            }
+        }
     }
 
     RegisterScreen(
         pnombre = state.pnombre,
         snombre = state.snombre,
         papellido = state.papellido,
+        mapellido = state.mapellido,
         fechaNacimiento = state.fechaNacimiento,
         email = state.email,
         rut = state.rut,
@@ -60,6 +91,7 @@ fun RegisterScreenVm(
         pnombreError = state.pnombreError,
         snombreError = state.snombreError,
         papellidoError = state.papellidoError,
+        mapellidoError = state.mapellidoError,
         fechaNacimientoError = state.fechaNacimientoError,
         emailError = state.emailError,
         rutError = state.rutError,
@@ -84,6 +116,7 @@ fun RegisterScreenVm(
         onPnombreChange = vm::onPnombreChange,
         onSnombreChange = vm::onSnombreChange,
         onPapellidoChange = vm::onPapellidoChange,
+        onMapellidoChange = vm::onMapellidoChange,
         onFechaNacimientoChange = vm::onFechaNacimientoChange,
         onEmailChange = vm::onRegisterEmailChange,
         onRutChange = vm::onRutChange,
@@ -102,6 +135,7 @@ private fun RegisterScreen(
     pnombre: String,
     snombre: String,
     papellido: String,
+    mapellido: String,
     fechaNacimiento: TextFieldValue,
     email: String,
     rut: String,
@@ -113,6 +147,7 @@ private fun RegisterScreen(
     pnombreError: String?,
     snombreError: String?,
     papellidoError: String?,
+    mapellidoError: String?,
     fechaNacimientoError: String?,
     emailError: String?,
     rutError: String?,
@@ -137,6 +172,7 @@ private fun RegisterScreen(
     onPnombreChange: (String) -> Unit,
     onSnombreChange: (String) -> Unit,
     onPapellidoChange: (String) -> Unit,
+    onMapellidoChange: (String) -> Unit,
     onFechaNacimientoChange: (TextFieldValue) -> Unit,
     onEmailChange: (String) -> Unit,
     onRutChange: (String) -> Unit,
@@ -222,11 +258,10 @@ private fun RegisterScreen(
                     }
                     Spacer(Modifier.height(8.dp))
 
-                    // ✅ SEGUNDO NOMBRE AHORA ES OPCIONAL
                     OutlinedTextField(
                         value = snombre,
                         onValueChange = onSnombreChange,
-                        label = { Text("Segundo Nombre (Opcional)") },
+                        label = { Text("Segundo Nombre *") },
                         singleLine = true,
                         isError = snombreError != null,
                         modifier = Modifier.fillMaxWidth()
@@ -246,6 +281,19 @@ private fun RegisterScreen(
                     )
                     if (papellidoError != null) {
                         Text(papellidoError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = mapellido,
+                        onValueChange = onMapellidoChange,
+                        label = { Text("Apellido Materno *") },
+                        singleLine = true,
+                        isError = mapellidoError != null,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (mapellidoError != null) {
+                        Text(mapellidoError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                     }
                     Spacer(Modifier.height(8.dp))
 

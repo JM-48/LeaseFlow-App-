@@ -105,8 +105,16 @@ class AgregarPropiedadViewModelTest {
 
         // 2. ACT
         viewModel.crearPropiedad(
-            "COD-TEST", "Casa Test", 500000.0, "CLP", 80.0,
-            3, 2, true, "Calle Test 123", 1, 1, 1
+            titulo = "Casa Test",
+            precioMensual = 500000.0,
+            m2 = 80.0,
+            nHabit = 3,
+            nBanos = 2,
+            petFriendly = true,
+            direccion = "Calle Test 123",
+            tipoId = 1,
+            comunaId = 1,
+            propietarioId = 1
         )
 
         advanceUntilIdle()
@@ -130,7 +138,16 @@ class AgregarPropiedadViewModelTest {
 
         // 2. ACT
         viewModel.crearPropiedad(
-            "X", "X", 0.0, "CLP", 0.0, 0, 0, false, "X", 1, 1, 1
+            titulo = "X",
+            precioMensual = 0.0,
+            m2 = 0.0,
+            nHabit = 0,
+            nBanos = 0,
+            petFriendly = false,
+            direccion = "X",
+            tipoId = 1,
+            comunaId = 1,
+            propietarioId = 1
         )
         advanceUntilIdle()
 

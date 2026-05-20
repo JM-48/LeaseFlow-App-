@@ -97,14 +97,33 @@ fun AppDrawer(
                     }
                 )
 
-                DrawerItem(
-                    icon = Icons.Default.Person,
-                    label = "Mi Perfil",
-                    onClick = {
-                        navController.navigate(Routes.PERFIL)
-                        onCloseDrawer()
-                    }
-                )
+                if (userId != null) {
+                    DrawerItem(
+                        icon = Icons.Default.Person,
+                        label = "Mi Perfil",
+                        onClick = {
+                            navController.navigate(Routes.PERFIL)
+                            onCloseDrawer()
+                        }
+                    )
+                } else {
+                    DrawerItem(
+                        icon = Icons.Default.Login,
+                        label = "Iniciar Sesion",
+                        onClick = {
+                            navController.navigate(Routes.LOGIN)
+                            onCloseDrawer()
+                        }
+                    )
+                    DrawerItem(
+                        icon = Icons.Default.PersonAdd,
+                        label = "Registrarse",
+                        onClick = {
+                            navController.navigate(Routes.REGISTER)
+                            onCloseDrawer()
+                        }
+                    )
+                }
 
                 DrawerItem(
                     icon = Icons.Default.Search,
@@ -121,6 +140,15 @@ fun AppDrawer(
                         label = "Mis Solicitudes",
                         onClick = {
                             navController.navigate(Routes.SOLICITUDES)
+                            onCloseDrawer()
+                        }
+                    )
+
+                    DrawerItem(
+                        icon = Icons.Default.Key,
+                        label = "Mis Arriendos",
+                        onClick = {
+                            navController.navigate(Routes.MIS_ARRIENDOS)
                             onCloseDrawer()
                         }
                     )
@@ -170,7 +198,16 @@ fun AppDrawer(
                         icon = Icons.Default.Assignment,
                         label = "Solicitudes Recibidas",
                         onClick = {
-                            navController.navigate(Routes.SOLICITUDES)
+                            navController.navigate(Routes.SOLICITUDES_RECIBIDAS)
+                            onCloseDrawer()
+                        }
+                    )
+
+                    DrawerItem(
+                        icon = Icons.Default.Description,
+                        label = "Mis Documentos",
+                        onClick = {
+                            navController.navigate(Routes.MIS_DOCUMENTOS)
                             onCloseDrawer()
                         }
                     )
@@ -224,6 +261,15 @@ fun AppDrawer(
                             onCloseDrawer()
                         }
                     )
+
+                    DrawerItem(
+                        icon = Icons.Default.ContactMail,
+                        label = "Gestion Contacto",
+                        onClick = {
+                            navController.navigate(Routes.GESTION_CONTACTO)
+                            onCloseDrawer()
+                        }
+                    )
                 }
 
                 HorizontalDivider(
@@ -247,19 +293,21 @@ fun AppDrawer(
                     color = Color.White.copy(alpha = 0.16f)
                 )
 
-                DrawerItem(
-                    icon = Icons.Default.ExitToApp,
-                    label = "Cerrar Sesion",
-                    onClick = {
-                        scope.launch {
-                            userPreferences.clearUserSession()
+                if (userId != null) {
+                    DrawerItem(
+                        icon = Icons.Default.ExitToApp,
+                        label = "Cerrar Sesion",
+                        onClick = {
+                            scope.launch {
+                                userPreferences.clearUserSession()
+                            }
+                            navController.navigate(Routes.WELCOME) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                            onCloseDrawer()
                         }
-                        navController.navigate(Routes.WELCOME) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                        onCloseDrawer()
-                    }
-                )
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
             }

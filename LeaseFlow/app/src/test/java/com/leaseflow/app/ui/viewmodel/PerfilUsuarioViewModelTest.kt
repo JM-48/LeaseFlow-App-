@@ -6,6 +6,10 @@ import com.leaseflow.app.data.local.dao.UsuarioDao
 import com.leaseflow.app.data.local.entities.EstadoEntity
 import com.leaseflow.app.data.local.entities.RolEntity
 import com.leaseflow.app.data.local.entities.UsuarioEntity
+import com.leaseflow.app.data.remote.ApiResult
+import com.leaseflow.app.data.remote.dto.UsuarioRemoteDTO
+import com.leaseflow.app.data.repository.LeaseFlowUserRepository
+import com.leaseflow.app.data.repository.UserRemoteRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.*
@@ -28,6 +32,10 @@ class PerfilUsuarioViewModelTest {
     private lateinit var catalogDao: CatalogDao
     @Mock
     private lateinit var solicitudDao: SolicitudDao
+    @Mock
+    private lateinit var userRemoteRepository: UserRemoteRepository
+    @Mock
+    private lateinit var localUserRepository: LeaseFlowUserRepository
 
     private lateinit var viewModel: PerfilUsuarioViewModel
 
@@ -42,7 +50,13 @@ class PerfilUsuarioViewModelTest {
         MockitoAnnotations.openMocks(this)
         Dispatchers.setMain(testDispatcher)
 
-        viewModel = PerfilUsuarioViewModel(usuarioDao, catalogDao, solicitudDao)
+        viewModel = PerfilUsuarioViewModel(
+            usuarioDao = usuarioDao,
+            catalogDao = catalogDao,
+            solicitudDao = solicitudDao,
+            userRemoteRepository = userRemoteRepository,
+            localUserRepository = localUserRepository
+        )
     }
 
     @After
@@ -80,6 +94,24 @@ class PerfilUsuarioViewModelTest {
 
         // Enseñamos a los Mocks qué responder
         whenever(usuarioDao.getById(userId)).thenReturn(usuarioFake)
+        whenever(userRemoteRepository.obtenerUsuarioPorId(userId, includeDetails = true)).thenReturn(
+            ApiResult.Success(
+                UsuarioRemoteDTO(
+                    id = userId,
+                    pnombre = usuarioFake.pnombre,
+                    snombre = usuarioFake.snombre,
+                    papellido = usuarioFake.papellido,
+                    fnacimiento = "2000-01-01",
+                    email = usuarioFake.email,
+                    rut = usuarioFake.rut,
+                    ntelefono = usuarioFake.ntelefono,
+                    clave = usuarioFake.clave,
+                    estadoId = usuarioFake.estado_id,
+                    rolId = usuarioFake.rol_id
+                )
+            )
+        )
+        whenever(localUserRepository.syncUsuarioFromRemote(any())).thenReturn(Result.success(userId))
         whenever(catalogDao.getRolById(rolId)).thenReturn(rolReal)
         whenever(catalogDao.getEstadoByNombre("Pendiente")).thenReturn(estadoPendienteReal)
 
@@ -88,6 +120,7 @@ class PerfilUsuarioViewModelTest {
 
         // 2. ACT
         viewModel.cargarDatosUsuario(userId)
+        advanceUntilIdle()
 
         // 3. ASSERT
         assertNotNull(viewModel.usuario.value)
@@ -119,11 +152,57 @@ class PerfilUsuarioViewModelTest {
             rol_id = 1
         )
 
-        whenever(usuarioDao.getById(1L)).thenReturn(usuarioOriginal)
-        viewModel.cargarDatosUsuario(1L) // Cargar datos iniciales
+        whenever(usuarioDao.getById(1L)).thenReturn(
+            usuarioOriginal,
+            usuarioOriginal,
+            usuarioOriginal.copy(
+                pnombre = "Editado",
+                snombre = "Segundo",
+                papellido = "NuevoApellido",
+                ntelefono = "999999999"
+            )
+        )
+        whenever(userRemoteRepository.obtenerUsuarioPorId(1L, includeDetails = true)).thenReturn(
+            ApiResult.Success(
+                UsuarioRemoteDTO(
+                    id = 1L,
+                    pnombre = usuarioOriginal.pnombre,
+                    snombre = usuarioOriginal.snombre,
+                    papellido = usuarioOriginal.papellido,
+                    fnacimiento = "2000-01-01",
+                    email = usuarioOriginal.email,
+                    rut = usuarioOriginal.rut,
+                    ntelefono = usuarioOriginal.ntelefono,
+                    clave = usuarioOriginal.clave,
+                    estadoId = usuarioOriginal.estado_id,
+                    rolId = usuarioOriginal.rol_id
+                )
+            )
+        )
+        whenever(userRemoteRepository.actualizarUsuario(eq(1L), any())).thenReturn(
+            ApiResult.Success(
+                UsuarioRemoteDTO(
+                    id = 1L,
+                    pnombre = "Editado",
+                    snombre = "Segundo",
+                    papellido = "NuevoApellido",
+                    fnacimiento = "2000-01-01",
+                    email = usuarioOriginal.email,
+                    rut = usuarioOriginal.rut,
+                    ntelefono = "999999999",
+                    clave = usuarioOriginal.clave,
+                    estadoId = usuarioOriginal.estado_id,
+                    rolId = usuarioOriginal.rol_id
+                )
+            )
+        )
+        whenever(localUserRepository.syncUsuarioFromRemote(any())).thenReturn(Result.success(1L))
+        viewModel.cargarDatosUsuario(1L)
+        advanceUntilIdle()
 
         // 2. ACT
         viewModel.actualizarPerfil(
+            usuarioId = 1L,
             pnombre = "Editado",
             snombre = "Segundo",
             papellido = "NuevoApellido",
@@ -131,6 +210,7 @@ class PerfilUsuarioViewModelTest {
             direccion = "Calle Nueva 123",
             comuna = "Santiago"
         )
+        advanceUntilIdle()
 
         // 3. ASSERT
         // Verificamos actualización en StateFlow

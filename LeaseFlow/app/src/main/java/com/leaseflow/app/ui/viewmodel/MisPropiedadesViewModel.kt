@@ -8,6 +8,7 @@ import com.leaseflow.app.data.local.dao.CatalogDao
 import com.leaseflow.app.data.local.entities.PropiedadEntity
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.PropertyRemoteDTO
+import com.leaseflow.app.data.repository.ApplicationRemoteRepository
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +22,8 @@ data class PropiedadConInfo(
     val propiedad: PropiedadEntity,
     val nombreComuna: String?,
     val nombreTipo: String?,
-    val propiedadRemota: PropertyRemoteDTO? = null
+    val propiedadRemota: PropertyRemoteDTO? = null,
+    val estadoArriendo: String? = null
 )
 
 /**
@@ -30,7 +32,8 @@ data class PropiedadConInfo(
 class MisPropiedadesViewModel(
     private val propiedadDao: PropiedadDao,
     private val catalogDao: CatalogDao,
-    private val propertyRepository: PropertyRemoteRepository
+    private val propertyRepository: PropertyRemoteRepository,
+    private val applicationRepository: ApplicationRemoteRepository
 ) : ViewModel() {
 
     companion object {
@@ -66,22 +69,40 @@ class MisPropiedadesViewModel(
             try {
                 Log.d(TAG, "Cargando propiedades del propietario: $propietarioId")
 
-                when (val result = propertyRepository.listarTodasPropiedades(includeDetails = true)) {
+                when (val result = propertyRepository.listarPropiedadesPorUsuario(
+                    usuarioId = propietarioId,
+                    includeDetails = true
+                )) {
                     is ApiResult.Success -> {
-                        // Filtrar por propietario
-                        val propiedadesFiltradas = result.data.filter {
-                            it.propietarioId == propietarioId
+                        Log.d(TAG, "Propiedades del propietario: ${result.data.size}")
+                        _propiedadesRemotas.value = result.data
+
+                        val estadoPorPropiedadId = mutableMapOf<Long, String?>()
+                        result.data.forEach { dto ->
+                            val propId = dto.id
+                            if (propId != null) {
+                                when (val solResult = applicationRepository.obtenerSolicitudesPorPropiedad(propId)) {
+                                    is ApiResult.Success -> {
+                                        val arrendada = solResult.data.any { s ->
+                                            s.estado?.uppercase() == "ACEPTADA" || s.estado?.uppercase() == "APROBADA"
+                                        }
+                                        estadoPorPropiedadId[propId] = if (arrendada) "Arrendada" else "Disponible"
+                                    }
+                                    else -> {
+                                        estadoPorPropiedadId[propId] = null
+                                    }
+                                }
+                            }
                         }
 
-                        Log.d(TAG, "Propiedades del propietario: ${propiedadesFiltradas.size}")
-                        _propiedadesRemotas.value = propiedadesFiltradas
-
-                        val propiedadesConInfo = propiedadesFiltradas.map { dto ->
+                        val propiedadesConInfo = result.data.map { dto ->
+                            val estadoArriendo = dto.id?.let { estadoPorPropiedadId[it] }
                             PropiedadConInfo(
                                 propiedad = mapRemoteToLocal(dto),
                                 nombreComuna = dto.comuna?.nombre,
                                 nombreTipo = dto.tipo?.nombre,
-                                propiedadRemota = dto
+                                propiedadRemota = dto,
+                                estadoArriendo = estadoArriendo
                             )
                         }
 

@@ -81,7 +81,7 @@ class PropiedadViewModel(
             _errorMsg.value = null
 
             try {
-                when (val result = remoteRepository.listarTodasPropiedades(includeDetails = true)) {
+                when (val result = remoteRepository.listarTodasPropiedades(includeDetails = false)) {
                     is ApiResult.Success -> {
                         Log.d(TAG, "Propiedades cargadas: ${result.data.size}")
                         guardarYActualizarLocal(result.data)
@@ -228,19 +228,29 @@ class PropiedadViewModel(
     }
 
     private fun mapTipoRemoteToLocal(dto: TipoRemoteDTO): TipoEntity {
-        return TipoEntity(id = dto.id ?: 0, nombre = dto.nombre ?: "")
+        return TipoEntity(id = dto.id ?: 0, nombre = fixEncoding(dto.nombre ?: ""))
     }
 
     private fun mapRegionRemoteToLocal(dto: RegionRemoteDTO): RegionEntity {
-        return RegionEntity(id = dto.id ?: 0, nombre = dto.nombre ?: "")
+        return RegionEntity(id = dto.id ?: 0, nombre = fixEncoding(dto.nombre ?: ""))
     }
 
     private fun mapComunaRemoteToLocal(dto: ComunaRemoteDTO): ComunaEntity {
-        return ComunaEntity(id = dto.id ?: 0, nombre = dto.nombre ?: "", region_id = dto.regionId ?: 0)
+        return ComunaEntity(id = dto.id ?: 0, nombre = fixEncoding(dto.nombre ?: ""), region_id = dto.regionId ?: 0)
     }
 
     private fun mapCategoriaRemoteToLocal(dto: CategoriaRemoteDTO): CategoriaEntity {
-        return CategoriaEntity(id = dto.id ?: 0, nombre = dto.nombre ?: "")
+        return CategoriaEntity(id = dto.id ?: 0, nombre = fixEncoding(dto.nombre ?: ""))
+    }
+
+    private fun fixEncoding(value: String): String {
+        if (value.isBlank()) return value
+        if (!value.contains('Ã') && !value.contains('Â') && !value.contains('�')) return value
+        return try {
+            String(value.toByteArray(Charsets.ISO_8859_1), Charsets.UTF_8)
+        } catch (_: Exception) {
+            value
+        }
     }
 
     // =========================================================================

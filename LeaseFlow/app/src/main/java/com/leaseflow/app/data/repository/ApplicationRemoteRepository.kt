@@ -71,9 +71,9 @@ class ApplicationRemoteRepository(
         return safeApiCall { api.obtenerSolicitudesPorPropiedad(propiedadId) }
     }
 
-    suspend fun listarTodasSolicitudes(): ApiResult<List<SolicitudArriendoDTO>> {
+    suspend fun listarTodasSolicitudes(includeDetails: Boolean = true): ApiResult<List<SolicitudArriendoDTO>> {
         Log.d(TAG, "Listando todas las solicitudes")
-        return safeApiCall { api.listarTodasSolicitudes(true) }
+        return safeApiCall { api.listarTodasSolicitudes(includeDetails) }
     }
 
     suspend fun actualizarEstadoSolicitud(
@@ -82,6 +82,26 @@ class ApplicationRemoteRepository(
     ): ApiResult<SolicitudArriendoDTO> {
         Log.d(TAG, "Actualizando estado: solicitudId=$solicitudId, nuevoEstado=$nuevoEstado")
         return safeApiCall { api.actualizarEstadoSolicitud(solicitudId, nuevoEstado) }
+    }
+
+    suspend fun cancelarSolicitud(solicitudId: Long): ApiResult<Unit> {
+        Log.d(TAG, "Cancelando solicitud: solicitudId=$solicitudId")
+        val deleteResult = safeApiCall { api.eliminarSolicitud(solicitudId) }
+        return when (deleteResult) {
+            is ApiResult.Success -> ApiResult.Success(Unit)
+            is ApiResult.Error -> {
+                if (deleteResult.code == 405 || deleteResult.code == 404) {
+                    when (val patchResult = actualizarEstadoSolicitud(solicitudId, "CANCELADA")) {
+                        is ApiResult.Success -> ApiResult.Success(Unit)
+                        is ApiResult.Error -> patchResult
+                        is ApiResult.Loading -> ApiResult.Loading
+                    }
+                } else {
+                    deleteResult
+                }
+            }
+            is ApiResult.Loading -> ApiResult.Loading
+        }
     }
 
     // ==================== REGISTROS ====================
@@ -113,7 +133,7 @@ class ApplicationRemoteRepository(
         return safeApiCall { api.finalizarRegistro(registroId) }
     }
 
-    suspend fun listarTodosRegistros(): ApiResult<List<RegistroArriendoDTO>> {
-        return safeApiCall { api.listarTodosRegistros(false) }
+    suspend fun listarTodosRegistros(includeDetails: Boolean = false): ApiResult<List<RegistroArriendoDTO>> {
+        return safeApiCall { api.listarTodosRegistros(includeDetails) }
     }
 }

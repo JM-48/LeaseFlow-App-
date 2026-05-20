@@ -70,10 +70,8 @@ fun AgregarPropiedadScreen(
     val userId by userPreferences.userId.collectAsStateWithLifecycle(initialValue = null)
 
     // Estados del formulario
-    var codigo by remember { mutableStateOf("") }
     var titulo by remember { mutableStateOf("") }
     var precioMensual by remember { mutableStateOf("") }
-    var divisa by remember { mutableStateOf("CLP") }
     var m2 by remember { mutableStateOf("") }
     var nHabit by remember { mutableStateOf("") }
     var nBanos by remember { mutableStateOf("") }
@@ -89,10 +87,10 @@ fun AgregarPropiedadScreen(
     var tipoExpanded by remember { mutableStateOf(false) }
     var regionExpanded by remember { mutableStateOf(false) }
     var comunaExpanded by remember { mutableStateOf(false) }
-    var divisaExpanded by remember { mutableStateOf(false) }
 
     // Fotos locales pendientes de subir
     var fotosLocales by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var navigated by remember { mutableStateOf(false) }
 
     // Para captura de foto
     var pendingCaptureUri by remember { mutableStateOf<Uri?>(null) }
@@ -163,6 +161,10 @@ fun AgregarPropiedadScreen(
     // Cuando se crea la propiedad, subir fotos
     LaunchedEffect(propiedadCreada) {
         propiedadCreada?.let { propiedad ->
+            if (!navigated && propiedad.id != null) {
+                navigated = true
+                onPropiedadCreada(propiedad.id)
+            }
             if (fotosLocales.isNotEmpty() && propiedad.id != null) {
                 fotosLocales.forEach { uri ->
                     // Aquí se llama a la función uriToFile y luego a subirFoto
@@ -171,15 +173,6 @@ fun AgregarPropiedadScreen(
                         viewModel.subirFoto(propiedad.id, it)
                     }
                 }
-            }
-        }
-    }
-
-    // Navegar cuando todas las fotos esten subidas
-    LaunchedEffect(fotosSubidas, propiedadCreada) {
-        if (propiedadCreada != null && fotosSubidas.size >= fotosLocales.size && !fotoSubiendo) {
-            propiedadCreada?.id?.let { id ->
-                onPropiedadCreada(id)
             }
         }
     }
@@ -324,16 +317,6 @@ fun AgregarPropiedadScreen(
                     }
 
                     Divider()
-
-                    // Codigo
-                    OutlinedTextField(
-                        value = codigo,
-                        onValueChange = { codigo = it.uppercase().take(10) },
-                        label = { Text("Codigo *") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        supportingText = { Text("Maximo 10 caracteres, unico") }
-                    )
 
                     // Titulo
                     OutlinedTextField(
@@ -484,49 +467,14 @@ fun AgregarPropiedadScreen(
                         )
                     }
 
-                    // Precio y Divisa
-                    Row(
+                    OutlinedTextField(
+                        value = precioMensual,
+                        onValueChange = { precioMensual = it.filter { c -> c.isDigit() } },
+                        label = { Text("Precio mensual (CLP) *") },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = precioMensual,
-                            onValueChange = { precioMensual = it.filter { c -> c.isDigit() } },
-                            label = { Text("Precio mensual *") },
-                            modifier = Modifier.weight(2f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true
-                        )
-
-                        ExposedDropdownMenuBox(
-                            expanded = divisaExpanded,
-                            onExpandedChange = { divisaExpanded = it },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            OutlinedTextField(
-                                value = divisa,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Divisa") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(divisaExpanded) },
-                                modifier = Modifier.menuAnchor()
-                            )
-                            ExposedDropdownMenu(
-                                expanded = divisaExpanded,
-                                onDismissRequest = { divisaExpanded = false }
-                            ) {
-                                listOf("CLP", "UF", "USD").forEach { d ->
-                                    DropdownMenuItem(
-                                        text = { Text(d) },
-                                        onClick = {
-                                            divisa = d
-                                            divisaExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
 
                     // Pet Friendly
                     Row(
@@ -550,9 +498,6 @@ fun AgregarPropiedadScreen(
                         onClick = {
                             // Validaciones
                             when {
-                                codigo.isBlank() -> {
-                                    Toast.makeText(context, "Ingresa el codigo", Toast.LENGTH_SHORT).show()
-                                }
                                 titulo.isBlank() -> {
                                     Toast.makeText(context, "Ingresa el titulo", Toast.LENGTH_SHORT).show()
                                 }
@@ -577,12 +522,13 @@ fun AgregarPropiedadScreen(
                                 precioMensual.isBlank() || precioMensual.toDoubleOrNull() == null -> {
                                     Toast.makeText(context, "Ingresa el precio mensual", Toast.LENGTH_SHORT).show()
                                 }
+                                fotosLocales.size > 20 -> {
+                                    Toast.makeText(context, "Maximo 20 fotos por propiedad", Toast.LENGTH_SHORT).show()
+                                }
                                 else -> {
                                     viewModel.crearPropiedad(
-                                        codigo = codigo,
                                         titulo = titulo,
                                         precioMensual = precioMensual.toDouble(),
-                                        divisa = divisa,
                                         m2 = m2.toDouble(),
                                         nHabit = nHabit.toInt(),
                                         nBanos = nBanos.toInt(),

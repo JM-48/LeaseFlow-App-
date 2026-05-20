@@ -28,6 +28,7 @@ data class SolicitudConDatos(
     val codigoPropiedad: String? = null,
     val nombreEstado: String? = null,
     val precioMensual: Double? = null,
+    val fotoUrl: String? = null,
     val nombreSolicitante: String? = null,
     val emailSolicitante: String? = null,
     val telefonoSolicitante: String? = null,
@@ -199,6 +200,29 @@ class SolicitudesViewModel(
         actualizarEstado(solicitudId, "RECHAZADA")
     }
 
+    fun cancelarSolicitud(solicitudId: Long, usuarioId: Long) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMsg.value = null
+            try {
+                when (val result = remoteRepository.cancelarSolicitud(solicitudId)) {
+                    is ApiResult.Success -> {
+                        _successMsg.value = "Solicitud cancelada"
+                        cargarSolicitudesArrendatario(usuarioId)
+                    }
+                    is ApiResult.Error -> {
+                        _errorMsg.value = result.message
+                    }
+                    is ApiResult.Loading -> {}
+                }
+            } catch (e: Exception) {
+                _errorMsg.value = e.message
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     private fun actualizarEstado(solicitudId: Long, nuevoEstado: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -301,6 +325,7 @@ class SolicitudesViewModel(
             codigoPropiedad = dto.propiedad?.codigo,
             nombreEstado = dto.estado ?: "PENDIENTE",
             precioMensual = dto.propiedad?.precioMensual,
+            fotoUrl = dto.propiedad?.fotos?.firstOrNull()?.url,
             nombreSolicitante = nombreUsuario,
             emailSolicitante = dto.usuario?.email,
             telefonoSolicitante = dto.usuario?.ntelefono,

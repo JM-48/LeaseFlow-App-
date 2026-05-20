@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.remote.dto.DocumentoRemoteDTO
+import com.leaseflow.app.data.remote.dto.TipoDocumentoRemoteDTO
 import com.leaseflow.app.ui.viewmodel.MisDocumentosViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -43,6 +44,8 @@ fun MisDocumentosScreen(
 
     var showResubirDialog by remember { mutableStateOf(false) }
     var documentoAResubir by remember { mutableStateOf<DocumentoRemoteDTO?>(null) }
+    var showSubirDialog by remember { mutableStateOf(false) }
+    var tipoSeleccionado by remember { mutableStateOf<TipoDocumentoRemoteDTO?>(null) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -54,12 +57,41 @@ fun MisDocumentosScreen(
                         documentoRechazadoId = doc.id ?: 0L,
                         usuarioId = uid,
                         tipoDocId = doc.tipoDocId ?: 1L,
-                        nombreArchivo = "${doc.tipoDocNombre}_${System.currentTimeMillis()}"
+                        nombreArchivo = "${doc.tipoDocNombre}_${System.currentTimeMillis()}",
+                        extension = "pdf"
                     )
                 }
             }
             showResubirDialog = false
             documentoAResubir = null
+        }
+    }
+
+    val nuevoDocPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { picked ->
+            val selected = tipoSeleccionado
+            val uid = userId
+            if (selected != null && uid != null) {
+                val mime = context.contentResolver.getType(picked).orEmpty()
+                val extension = when {
+                    mime.contains("pdf", ignoreCase = true) -> "pdf"
+                    mime.contains("png", ignoreCase = true) -> "png"
+                    mime.contains("gif", ignoreCase = true) -> "gif"
+                    mime.contains("jpeg", ignoreCase = true) || mime.contains("jpg", ignoreCase = true) -> "jpg"
+                    mime.contains("image", ignoreCase = true) -> "jpg"
+                    else -> "pdf"
+                }
+                viewModel.subirNuevoDocumento(
+                    usuarioId = uid,
+                    tipoDocId = selected.id ?: 1L,
+                    nombreArchivo = "${selected.nombre}_${System.currentTimeMillis()}",
+                    extension = extension
+                )
+            }
+            showSubirDialog = false
+            tipoSeleccionado = null
         }
     }
 
@@ -82,6 +114,18 @@ fun MisDocumentosScreen(
                     }
                 }
             )
+        }
+        ,
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    showSubirDialog = true
+                    viewModel.cargarTiposDocumento()
+                },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.UploadFile, contentDescription = "Subir documento", tint = MaterialTheme.colorScheme.onPrimary)
+            }
         }
     ) { paddingValues ->
         Column(
@@ -190,6 +234,61 @@ fun MisDocumentosScreen(
                     ) {
                         Text("Cancelar")
                     }
+                }
+            )
+        }
+
+        if (showSubirDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showSubirDialog = false
+                    tipoSeleccionado = null
+                },
+                icon = {
+                    Icon(
+                        Icons.Default.UploadFile,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                title = { Text("Subir Documento") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Selecciona el tipo de documento y luego el archivo a subir.")
+                        val tipos = uiState.tiposDocumento
+                        if (tipos.isEmpty()) {
+                            Text(
+                                text = "No se pudieron cargar los tipos de documento.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            tipos.forEach { tipo ->
+                                val selected = tipoSeleccionado?.id == tipo.id
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = { tipoSeleccionado = tipo },
+                                    label = { Text(tipo.nombre ?: "Documento") }
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { nuevoDocPickerLauncher.launch("*/*") },
+                        enabled = tipoSeleccionado != null && userId != null
+                    ) {
+                        Text("Seleccionar Archivo")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showSubirDialog = false
+                            tipoSeleccionado = null
+                        }
+                    ) { Text("Cancelar") }
                 }
             )
         }

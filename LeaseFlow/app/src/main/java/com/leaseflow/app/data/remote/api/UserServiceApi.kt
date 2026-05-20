@@ -70,6 +70,11 @@ interface UserServiceApi {
         @Query("estadoId") estadoId: Long
     ): Response<UsuarioRemoteDTO>
 
+    @DELETE("api/usuarios/{id}")
+    suspend fun eliminarUsuario(
+        @Path("id") id: Long
+    ): Response<Void>
+
     @PATCH("api/usuarios/{id}/puntos")
     suspend fun agregarPuntos(
         @Path("id") id: Long,

@@ -326,15 +326,42 @@ private fun PropiedadPropietarioCard(
                         modifier = Modifier.weight(1f)
                     )
 
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            propiedad.codigo,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        propiedadConInfo.estadoArriendo?.let { estado ->
+                            val container = if (estado == "Arrendada") {
+                                MaterialTheme.colorScheme.errorContainer
+                            } else {
+                                MaterialTheme.colorScheme.tertiaryContainer
+                            }
+                            val content = if (estado == "Arrendada") {
+                                MaterialTheme.colorScheme.onErrorContainer
+                            } else {
+                                MaterialTheme.colorScheme.onTertiaryContainer
+                            }
+
+                            Surface(
+                                color = container,
+                                shape = MaterialTheme.shapes.small
+                            ) {
+                                Text(
+                                    estado,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = content
+                                )
+                            }
+                        }
+
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(
+                                propiedad.codigo,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     }
                 }
 

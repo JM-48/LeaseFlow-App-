@@ -6,6 +6,10 @@ import com.leaseflow.app.data.local.dao.UsuarioDao
 import com.leaseflow.app.data.local.dao.CatalogDao
 import com.leaseflow.app.data.local.dao.SolicitudDao
 import com.leaseflow.app.data.local.entities.UsuarioEntity
+import com.leaseflow.app.data.remote.ApiResult
+import com.leaseflow.app.data.remote.dto.UsuarioUpdateRemoteDTO
+import com.leaseflow.app.data.repository.LeaseFlowUserRepository
+import com.leaseflow.app.data.repository.UserRemoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -13,7 +17,9 @@ import kotlinx.coroutines.launch
 class PerfilUsuarioViewModel(
     private val usuarioDao: UsuarioDao,
     private val catalogDao: CatalogDao,
-    private val solicitudDao: SolicitudDao
+    private val solicitudDao: SolicitudDao,
+    private val userRemoteRepository: UserRemoteRepository,
+    private val localUserRepository: LeaseFlowUserRepository
 ) : ViewModel() {
 
     private val _usuario = MutableStateFlow<UsuarioEntity?>(null)
@@ -28,26 +34,45 @@ class PerfilUsuarioViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving
+
+    private val _errorMsg = MutableStateFlow<String?>(null)
+    val errorMsg: StateFlow<String?> = _errorMsg
+
     fun cargarDatosUsuario(usuarioId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
+            _errorMsg.value = null
 
             try {
-                val user = usuarioDao.getById(usuarioId)
-                _usuario.value = user
+                val localUser = usuarioDao.getById(usuarioId)
+                _usuario.value = localUser
 
-                user?.rol_id?.let { rolId ->
+                when (val remoteResult = userRemoteRepository.obtenerUsuarioPorId(usuarioId, includeDetails = true)) {
+                    is ApiResult.Success -> {
+                        localUserRepository.syncUsuarioFromRemote(remoteResult.data)
+                        _usuario.value = usuarioDao.getById(usuarioId)
+                    }
+                    is ApiResult.Error -> {
+                        if (localUser == null) {
+                            _errorMsg.value = remoteResult.message
+                        }
+                    }
+                    is ApiResult.Loading -> {}
+                }
+
+                _usuario.value?.rol_id?.let { rolId ->
                     val rol = catalogDao.getRolById(rolId)
                     _nombreRol.value = rol?.nombre
                 }
 
                 val estadoPendiente = catalogDao.getEstadoByNombre("Pendiente")
                 if (estadoPendiente != null) {
-                    val count = solicitudDao.countSolicitudesActivas(usuarioId, estadoPendiente.id)
-                    _cantidadSolicitudes.value = count
+                    _cantidadSolicitudes.value = solicitudDao.countSolicitudesActivas(usuarioId, estadoPendiente.id)
                 }
             } catch (e: Exception) {
-                // Log error
+                _errorMsg.value = e.message ?: "Error al cargar perfil"
             } finally {
                 _isLoading.value = false
             }
@@ -55,6 +80,7 @@ class PerfilUsuarioViewModel(
     }
 
     fun actualizarPerfil(
+        usuarioId: Long,
         pnombre: String,
         snombre: String,
         papellido: String,
@@ -64,19 +90,36 @@ class PerfilUsuarioViewModel(
         fotoUri: String? = null
     ) {
         viewModelScope.launch {
-            _usuario.value?.let { user ->
-                val updatedUser = user.copy(
+            _isSaving.value = true
+            _errorMsg.value = null
+            try {
+                val updateDto = UsuarioUpdateRemoteDTO(
                     pnombre = pnombre,
                     snombre = snombre,
                     papellido = papellido,
+                    email = _usuario.value?.email ?: "",
                     ntelefono = telefono,
-                    direccion = direccion,
-                    comuna = comuna,
-                    fotoPerfil = fotoUri
+                    rolId = _usuario.value?.rol_id,
+                    estadoId = _usuario.value?.estado_id
                 )
 
-                usuarioDao.update(updatedUser)
-                _usuario.value = updatedUser
+                when (val result = userRemoteRepository.actualizarUsuario(usuarioId, updateDto)) {
+                    is ApiResult.Success -> {
+                        localUserRepository.syncUsuarioFromRemote(result.data)
+                        _usuario.value = usuarioDao.getById(usuarioId)?.copy(
+                            direccion = direccion,
+                            comuna = comuna,
+                            fotoPerfil = fotoUri
+                        )
+                        _usuario.value?.let { usuarioDao.update(it) }
+                    }
+                    is ApiResult.Error -> _errorMsg.value = result.message
+                    is ApiResult.Loading -> {}
+                }
+            } catch (e: Exception) {
+                _errorMsg.value = e.message ?: "Error al actualizar perfil"
+            } finally {
+                _isSaving.value = false
             }
         }
     }

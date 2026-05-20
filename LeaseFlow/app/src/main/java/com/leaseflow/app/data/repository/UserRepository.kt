@@ -68,10 +68,24 @@ class UserRepository(private val api: UserServiceApi) {
     }
 
     suspend fun deleteUser(userId: Long): ApiResult<Unit> {
-        return when (val result = safeApiCall { api.cambiarEstado(userId, estadoId = 2) }) {
-            is ApiResult.Success -> ApiResult.Success(Unit)
-            is ApiResult.Error -> result
-            else -> ApiResult.Loading
+        return try {
+            val response = api.eliminarUsuario(userId)
+            if (response.isSuccessful) {
+                ApiResult.Success(Unit)
+            } else {
+                val fallback = safeApiCall { api.cambiarEstado(userId, estadoId = 2) }
+                when (fallback) {
+                    is ApiResult.Success -> ApiResult.Success(Unit)
+                    is ApiResult.Error -> fallback
+                    is ApiResult.Loading -> ApiResult.Loading
+                }
+            }
+        } catch (e: Exception) {
+            when (val fallback = safeApiCall { api.cambiarEstado(userId, estadoId = 2) }) {
+                is ApiResult.Success -> ApiResult.Success(Unit)
+                is ApiResult.Error -> fallback
+                is ApiResult.Loading -> ApiResult.Error(e.message ?: "Error de conexion")
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.DocumentoRemoteDTO
+import com.leaseflow.app.data.remote.dto.TipoDocumentoRemoteDTO
 import com.leaseflow.app.data.repository.DocumentRemoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,6 +14,7 @@ import kotlinx.coroutines.launch
 
 data class MisDocumentosUiState(
     val documentos: List<DocumentoRemoteDTO> = emptyList(),
+    val tiposDocumento: List<TipoDocumentoRemoteDTO> = emptyList(),
     val isLoading: Boolean = false,
     val isUploading: Boolean = false,
     val error: String? = null,
@@ -59,6 +61,20 @@ class MisDocumentosViewModel(
         }
     }
 
+    fun cargarTiposDocumento() {
+        viewModelScope.launch {
+            when (val result = documentRepository.listarTiposDocumentos()) {
+                is ApiResult.Success -> {
+                    _uiState.update { it.copy(tiposDocumento = result.data) }
+                }
+                is ApiResult.Error -> {
+                    _uiState.update { it.copy(error = result.message) }
+                }
+                is ApiResult.Loading -> {}
+            }
+        }
+    }
+
     /**
      * Resube un documento rechazado:
      * 1. Elimina el documento rechazado
@@ -68,7 +84,8 @@ class MisDocumentosViewModel(
         documentoRechazadoId: Long,
         usuarioId: Long,
         tipoDocId: Long,
-        nombreArchivo: String
+        nombreArchivo: String,
+        extension: String = "pdf"
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isUploading = true) }
@@ -84,7 +101,7 @@ class MisDocumentosViewModel(
                     val nombreDoc = documentRepository.generarNombreDocumento(
                         tipoDocId = tipoDocId,
                         nombreUsuario = "user_$usuarioId",
-                        extension = "pdf"
+                        extension = extension
                     )
 
                     when (val createResult = documentRepository.crearDocumento(
@@ -136,7 +153,8 @@ class MisDocumentosViewModel(
     fun subirNuevoDocumento(
         usuarioId: Long,
         tipoDocId: Long,
-        nombreArchivo: String
+        nombreArchivo: String,
+        extension: String = "pdf"
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isUploading = true) }
@@ -144,7 +162,7 @@ class MisDocumentosViewModel(
             val nombreDoc = documentRepository.generarNombreDocumento(
                 tipoDocId = tipoDocId,
                 nombreUsuario = "user_$usuarioId",
-                extension = "pdf"
+            extension = extension
             )
 
             when (val result = documentRepository.crearDocumento(

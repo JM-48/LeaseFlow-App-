@@ -35,8 +35,9 @@ data class LoginUiState(
 
 data class RegisterUiState(
     val pnombre: String = "",
-    val snombre: String = "",  // Ahora opcional
+    val snombre: String = "",
     val papellido: String = "",
+    val mapellido: String = "",
     val fechaNacimiento: TextFieldValue = TextFieldValue(""),
     val email: String = "",
     val rut: String = "",
@@ -49,6 +50,7 @@ data class RegisterUiState(
     val pnombreError: String? = null,
     val snombreError: String? = null,
     val papellidoError: String? = null,
+    val mapellidoError: String? = null,
     val fechaNacimientoError: String? = null,
     val emailError: String? = null,
     val rutError: String? = null,
@@ -149,6 +151,20 @@ class LeaseFlowAuthViewModel(
         _login.update { it.copy(success = false, errorMsg = null) }
     }
 
+    suspend fun loginDirect(email: String, password: String): ApiResult<UsuarioRemoteDTO> {
+        return when (val result = remoteRepository.login(email.trim(), password)) {
+            is ApiResult.Success -> {
+                loggedUser = result.data.usuario
+                loggedUser?.let { usuario ->
+                    localRepository.syncUsuarioFromRemote(usuario)
+                }
+                if (loggedUser != null) ApiResult.Success(loggedUser!!) else ApiResult.Error("Login fallido")
+            }
+            is ApiResult.Error -> ApiResult.Error(result.message, result.code)
+            is ApiResult.Loading -> ApiResult.Loading
+        }
+    }
+
     // ==================== REGISTRO ====================
 
     fun onPnombreChange(value: String) {
@@ -157,18 +173,21 @@ class LeaseFlowAuthViewModel(
         recomputeRegisterCanSubmit()
     }
 
-    // Segundo nombre ahora es opcional
     fun onSnombreChange(value: String) {
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
-        // Solo validar si tiene contenido
-        val error = if (filtered.isNotBlank()) validateNameOptional(filtered) else null
-        _register.update { it.copy(snombre = filtered, snombreError = error) }
+        _register.update { it.copy(snombre = filtered, snombreError = validateNameRequired(filtered)) }
         recomputeRegisterCanSubmit()
     }
 
     fun onPapellidoChange(value: String) {
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
         _register.update { it.copy(papellido = filtered, papellidoError = validateNameRequired(filtered)) }
+        recomputeRegisterCanSubmit()
+    }
+
+    fun onMapellidoChange(value: String) {
+        val filtered = value.filter { it.isLetter() || it.isWhitespace() }
+        _register.update { it.copy(mapellido = filtered, mapellidoError = validateNameRequired(filtered)) }
         recomputeRegisterCanSubmit()
     }
 
@@ -319,15 +338,17 @@ class LeaseFlowAuthViewModel(
         val docState = _documentosRegistro.value
 
         val errors = listOf(
-            s.pnombreError, s.snombreError, s.papellidoError,
+            s.pnombreError, s.snombreError, s.papellidoError, s.mapellidoError,
             s.fechaNacimientoError, s.emailError, s.rutError,
             s.telefonoError, s.passError, s.confirmError, s.codigoReferidoError
         )
         val noErrors = errors.all { it == null }
 
-        // snombre ya no es requerido
         val filled = s.pnombre.isNotBlank() &&
-                s.papellido.isNotBlank() && s.fechaNacimiento.text.length == 10 &&
+                s.snombre.isNotBlank() &&
+                s.papellido.isNotBlank() &&
+                s.mapellido.isNotBlank() &&
+                s.fechaNacimiento.text.length == 10 &&
                 s.email.isNotBlank() && s.rut.isNotBlank() &&
                 s.telefono.isNotBlank() && s.pass.isNotBlank() && s.confirm.isNotBlank()
 
@@ -375,13 +396,13 @@ class LeaseFlowAuthViewModel(
                 else -> 3L
             }
 
-            // snombre puede ser vacío
-            val snombreValue = s.snombre.trim().ifBlank { "" }
+            val snombreValue = s.snombre.trim()
+            val apellidos = "${s.papellido.trim()} ${s.mapellido.trim()}".trim()
 
             when (val result = remoteRepository.registrarUsuario(
                 pnombre = s.pnombre.trim(),
-                snombre = snombreValue,  // Puede ser vacío
-                papellido = s.papellido.trim(),
+                snombre = snombreValue,
+                papellido = apellidos,
                 fnacimiento = fechaISO,
                 email = s.email.trim(),
                 rut = s.rut.trim(),

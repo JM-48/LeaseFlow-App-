@@ -203,7 +203,7 @@ fun AppNavGraph(
                 composable(Routes.REGISTER) {
                     RegisterScreenVm(
                         vm = authViewModel,
-                        onRegisteredNavigateLogin = goLogin,
+                        onRegisteredNavigateHome = goHomeAfterLogin,
                         onGoLogin = goLogin
                     )
                 }
@@ -249,13 +249,20 @@ fun AppNavGraph(
 
                 // PERFIL
                 composable(Routes.PERFIL) {
-                    PerfilUsuarioScreen(
-                        vm = perfilViewModel,
-                        onBack = { navController.popBackStack() },
-                        onVerSolicitudes = goSolicitudes,
-                        onVerDocumentos = goMisDocumentos,
-                        onLogout = goWelcome
-                    )
+                    if (!isLoggedIn || userId == null) {
+                        LaunchedEffect(Unit) {
+                            navController.navigate(Routes.LOGIN) {
+                                popUpTo(Routes.PERFIL) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    } else {
+                        PerfilUsuarioScreen(
+                            vm = perfilViewModel,
+                            onBack = { navController.popBackStack() },
+                            onLogout = goWelcome
+                        )
+                    }
                 }
 
                 // SOLICITUDES
@@ -275,6 +282,40 @@ fun AppNavGraph(
                     )
                 }
 
+                composable(Routes.SOLICITUDES_RECIBIDAS) {
+                    val solicitudesViewModelFactory = SolicitudesViewModelFactory(
+                        solicitudDao = database.solicitudDao(),
+                        propiedadDao = database.propiedadDao(),
+                        catalogDao = database.catalogDao(),
+                        remoteRepository = applicationRepository,
+                        propertyRepository = propertyRepository
+                    )
+
+                    SolicitudesScreen(
+                        userPreferences = userPrefs,
+                        viewModelFactory = solicitudesViewModelFactory,
+                        mode = SolicitudesMode.RECIBIDAS,
+                        onNavigateToDetalle = goPropiedadDetalle
+                    )
+                }
+
+                composable(Routes.SOLICITUDES_ADMIN) {
+                    val solicitudesViewModelFactory = SolicitudesViewModelFactory(
+                        solicitudDao = database.solicitudDao(),
+                        propiedadDao = database.propiedadDao(),
+                        catalogDao = database.catalogDao(),
+                        remoteRepository = applicationRepository,
+                        propertyRepository = propertyRepository
+                    )
+
+                    SolicitudesScreen(
+                        userPreferences = userPrefs,
+                        viewModelFactory = solicitudesViewModelFactory,
+                        mode = SolicitudesMode.ADMIN_GLOBAL,
+                        onNavigateToDetalle = goPropiedadDetalle
+                    )
+                }
+
                 // MIS DOCUMENTOS
                 composable(Routes.MIS_DOCUMENTOS) {
                     val documentRepository = DocumentRemoteRepository()
@@ -288,12 +329,21 @@ fun AppNavGraph(
                     )
                 }
 
+                composable(Routes.MIS_ARRIENDOS) {
+                    MisArriendosScreen(
+                        userPreferences = userPrefs,
+                        onBack = { navController.popBackStack() },
+                        onVerPropiedad = goPropiedadDetalle
+                    )
+                }
+
                 // ADMIN PANEL
                 composable(Routes.ADMIN_PANEL) {
                     AdminPanelScreen(
                         onBack = { navController.popBackStack() },
                         onGestionPropiedades = { navController.navigate(Routes.GESTION_PROPIEDADES) },
-                        currentUser = null
+                        onGestionDocumentos = { navController.navigate(Routes.GESTION_DOCUMENTOS) },
+                        onGestionContacto = { navController.navigate(Routes.GESTION_CONTACTO) }
                     )
                 }
 
@@ -367,7 +417,8 @@ fun AppNavGraph(
                     val misPropiedadesViewModelFactory = MisPropiedadesViewModelFactory(
                         propiedadDao = database.propiedadDao(),
                         catalogDao = database.catalogDao(),
-                        propertyRepository = propertyRepository
+                        propertyRepository = propertyRepository,
+                        applicationRepository = applicationRepository
                     )
 
                     MisPropiedadesScreen(
@@ -390,6 +441,29 @@ fun AppNavGraph(
                         usuarioId = userId,
                         onBack = { navController.popBackStack() }
                     )
+                }
+
+                composable(Routes.GESTION_CONTACTO) {
+                    val contactRepository = ContactRemoteRepository()
+                    val contactViewModel: ContactViewModel = viewModel(
+                        factory = ContactViewModelFactory(contactRepository)
+                    )
+
+                    val adminId = userId
+                    if (!isLoggedIn || adminId == null) {
+                        LaunchedEffect(Unit) {
+                            navController.navigate(Routes.LOGIN) {
+                                popUpTo(Routes.GESTION_CONTACTO) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    } else {
+                        GestionContactoScreen(
+                            contactViewModel = contactViewModel,
+                            adminId = adminId,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
                 }
 
                 // SOLICITUD DETALLE
