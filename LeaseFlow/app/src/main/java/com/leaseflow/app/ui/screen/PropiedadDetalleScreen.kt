@@ -110,8 +110,9 @@ fun PropiedadDetalleScreen(
             )
         },
         bottomBar = {
-            // Boton de solicitar arriendo (solo para inquilino)
-            if (currentUserRole?.uppercase() == "ARRENDATARIO" && propiedad != null) {
+            // Boton de solicitar arriendo (habilitado para Inquilino y Administrador)
+            val rolActual = currentUserRole?.uppercase()
+            if ((rolActual == "ARRENDATARIO" || rolActual == "ADMINISTRADOR") && propiedad != null) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     tonalElevation = 8.dp

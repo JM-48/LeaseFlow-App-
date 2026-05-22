@@ -63,7 +63,7 @@ fun AppNavGraph(
         )
     }
 
-    // Funciones de navegacion
+    // Funciones de navegación existentes
     val goWelcome: () -> Unit = {
         navController.navigate(Routes.WELCOME) {
             popUpTo(0) { inclusive = true }
@@ -78,32 +78,20 @@ fun AppNavGraph(
         }
     }
 
-    val goLogin: () -> Unit = {
-        navController.navigate(Routes.LOGIN)
-    }
-
-    val goRegister: () -> Unit = {
-        navController.navigate(Routes.REGISTER)
-    }
-
-    val goPropiedades: () -> Unit = {
-        navController.navigate(Routes.CATALOGO_PROPIEDADES)
-    }
-
-    val goPerfil: () -> Unit = {
-        navController.navigate(Routes.PERFIL)
-    }
-
-    val goSolicitudes: () -> Unit = {
-        navController.navigate(Routes.SOLICITUDES)
-    }
-
-    val goMisDocumentos: () -> Unit = {
-        navController.navigate(Routes.MIS_DOCUMENTOS)
-    }
+    val goLogin: () -> Unit = { navController.navigate(Routes.LOGIN) }
+    val goRegister: () -> Unit = { navController.navigate(Routes.REGISTER) }
+    val goPropiedades: () -> Unit = { navController.navigate(Routes.CATALOGO_PROPIEDADES) }
+    val goPerfil: () -> Unit = { navController.navigate(Routes.PERFIL) }
+    val goSolicitudes: () -> Unit = { navController.navigate(Routes.SOLICITUDES) }
+    val goMisDocumentos: () -> Unit = { navController.navigate(Routes.MIS_DOCUMENTOS) }
 
     val goPropiedadDetalle: (Long) -> Unit = { propiedadId ->
         navController.navigate("${Routes.PROPIEDAD_DETALLE}/$propiedadId")
+    }
+
+    // CORRECCIÓN: Creamos la función para ir al detalle de la SOLICITUD
+    val goSolicitudDetalle: (Long) -> Unit = { solicitudId ->
+        navController.navigate("${Routes.SOLICITUD_DETALLE}/$solicitudId")
     }
 
     val goHomeAfterLogin: () -> Unit = {
@@ -177,311 +165,313 @@ fun AppNavGraph(
                     modifier = Modifier.padding(innerPadding)
                 ) {
 
-                composable(Routes.WELCOME) {
-                    WelcomeScreen(
-                        onGoLogin = goLogin,
-                        onGoRegister = goRegister
-                    )
-                }
-
-                composable(Routes.HOME) {
-                    HomeScreen(
-                        onGoPropiedades = goPropiedades,
-                        onGoLogin = goLogin,
-                        onGoRegister = goRegister
-                    )
-                }
-
-                composable(Routes.LOGIN) {
-                    LoginScreenVm(
-                        vm = authViewModel,
-                        onLoginOkNavigateHome = goHomeAfterLogin,
-                        onGoRegister = goRegister
-                    )
-                }
-
-                composable(Routes.REGISTER) {
-                    RegisterScreenVm(
-                        vm = authViewModel,
-                        onRegisteredNavigateHome = goHomeAfterLogin,
-                        onGoLogin = goLogin
-                    )
-                }
-
-                // CATALOGO PROPIEDADES
-                composable(Routes.CATALOGO_PROPIEDADES) {
-                    val propiedadViewModelFactory = PropiedadViewModelFactory(
-                        propiedadDao = database.propiedadDao(),
-                        catalogDao = database.catalogDao(),
-                        remoteRepository = propertyRepository
-                    )
-
-                    CatalogoPropiedadesScreen(
-                        viewModelFactory = propiedadViewModelFactory,
-                        onVerDetalle = { propiedadId ->
-                            goPropiedadDetalle(propiedadId)
-                        }
-                    )
-                }
-
-                // PROPIEDAD DETALLE
-                composable(
-                    route = "${Routes.PROPIEDAD_DETALLE}/{propiedadId}",
-                    arguments = listOf(navArgument("propiedadId") { type = NavType.LongType })
-                ) { backStackEntry ->
-                    val propiedadId = backStackEntry.arguments?.getLong("propiedadId") ?: 0L
-
-                    val propiedadDetalleViewModelFactory = PropiedadDetalleViewModelFactory(
-                        propiedadDao = database.propiedadDao(),
-                        catalogDao = database.catalogDao(),
-                        propertyRepository = propertyRepository,
-                        applicationRepository = applicationRepository
-                    )
-
-                    PropiedadDetalleScreen(
-                        propiedadId = propiedadId,
-                        userPreferences = userPrefs,
-                        viewModelFactory = propiedadDetalleViewModelFactory,
-                        onNavigateBack = { navController.popBackStack() },
-                        onNavigateToSolicitudes = goSolicitudes
-                    )
-                }
-
-                // PERFIL
-                composable(Routes.PERFIL) {
-                    if (!isLoggedIn || userId == null) {
-                        LaunchedEffect(Unit) {
-                            navController.navigate(Routes.LOGIN) {
-                                popUpTo(Routes.PERFIL) { inclusive = true }
-                                launchSingleTop = true
-                            }
-                        }
-                    } else {
-                        PerfilUsuarioScreen(
-                            vm = perfilViewModel,
-                            onBack = { navController.popBackStack() },
-                            onLogout = goWelcome
+                    composable(Routes.WELCOME) {
+                        WelcomeScreen(
+                            onGoLogin = goLogin,
+                            onGoRegister = goRegister
                         )
                     }
-                }
 
-                // SOLICITUDES
-                composable(Routes.SOLICITUDES) {
-                    val solicitudesViewModelFactory = SolicitudesViewModelFactory(
-                        solicitudDao = database.solicitudDao(),
-                        propiedadDao = database.propiedadDao(),
-                        catalogDao = database.catalogDao(),
-                        remoteRepository = applicationRepository,
-                        propertyRepository = propertyRepository
-                    )
+                    composable(Routes.HOME) {
+                        HomeScreen(
+                            onGoPropiedades = goPropiedades,
+                            onGoLogin = goLogin,
+                            onGoRegister = goRegister
+                        )
+                    }
 
-                    SolicitudesScreen(
-                        userPreferences = userPrefs,
-                        viewModelFactory = solicitudesViewModelFactory,
-                        onNavigateToDetalle = goPropiedadDetalle
-                    )
-                }
+                    composable(Routes.LOGIN) {
+                        LoginScreenVm(
+                            vm = authViewModel,
+                            onLoginOkNavigateHome = goHomeAfterLogin,
+                            onGoRegister = goRegister
+                        )
+                    }
 
-                composable(Routes.SOLICITUDES_RECIBIDAS) {
-                    val solicitudesViewModelFactory = SolicitudesViewModelFactory(
-                        solicitudDao = database.solicitudDao(),
-                        propiedadDao = database.propiedadDao(),
-                        catalogDao = database.catalogDao(),
-                        remoteRepository = applicationRepository,
-                        propertyRepository = propertyRepository
-                    )
+                    composable(Routes.REGISTER) {
+                        RegisterScreenVm(
+                            vm = authViewModel,
+                            onRegisteredNavigateHome = goHomeAfterLogin,
+                            onGoLogin = goLogin
+                        )
+                    }
 
-                    SolicitudesScreen(
-                        userPreferences = userPrefs,
-                        viewModelFactory = solicitudesViewModelFactory,
-                        mode = SolicitudesMode.RECIBIDAS,
-                        onNavigateToDetalle = goPropiedadDetalle
-                    )
-                }
+                    // CATALOGO PROPIEDADES
+                    composable(Routes.CATALOGO_PROPIEDADES) {
+                        val propiedadViewModelFactory = PropiedadViewModelFactory(
+                            propiedadDao = database.propiedadDao(),
+                            catalogDao = database.catalogDao(),
+                            remoteRepository = propertyRepository
+                        )
 
-                composable(Routes.SOLICITUDES_ADMIN) {
-                    val solicitudesViewModelFactory = SolicitudesViewModelFactory(
-                        solicitudDao = database.solicitudDao(),
-                        propiedadDao = database.propiedadDao(),
-                        catalogDao = database.catalogDao(),
-                        remoteRepository = applicationRepository,
-                        propertyRepository = propertyRepository
-                    )
-
-                    SolicitudesScreen(
-                        userPreferences = userPrefs,
-                        viewModelFactory = solicitudesViewModelFactory,
-                        mode = SolicitudesMode.ADMIN_GLOBAL,
-                        onNavigateToDetalle = goPropiedadDetalle
-                    )
-                }
-
-                // MIS DOCUMENTOS
-                composable(Routes.MIS_DOCUMENTOS) {
-                    val documentRepository = DocumentRemoteRepository()
-                    val misDocumentosViewModel: MisDocumentosViewModel = viewModel(
-                        factory = MisDocumentosViewModelFactory(documentRepository)
-                    )
-
-                    MisDocumentosScreen(
-                        viewModel = misDocumentosViewModel,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
-
-                composable(Routes.MIS_ARRIENDOS) {
-                    MisArriendosScreen(
-                        userPreferences = userPrefs,
-                        onBack = { navController.popBackStack() },
-                        onVerPropiedad = goPropiedadDetalle
-                    )
-                }
-
-                // ADMIN PANEL
-                composable(Routes.ADMIN_PANEL) {
-                    AdminPanelScreen(
-                        onBack = { navController.popBackStack() },
-                        onGestionPropiedades = { navController.navigate(Routes.GESTION_PROPIEDADES) },
-                        onGestionDocumentos = { navController.navigate(Routes.GESTION_DOCUMENTOS) },
-                        onGestionContacto = { navController.navigate(Routes.GESTION_CONTACTO) }
-                    )
-                }
-
-                // GESTION USUARIOS
-                composable(Routes.GESTION_USUARIOS) {
-                    val userRepository = UserRepository(RetrofitClient.userServiceApi)
-                    val userManagementViewModel: UserManagementViewModel = viewModel(
-                        factory = UserManagementViewModelFactory(userRepository)
-                    )
-
-                    val users by userManagementViewModel.users.collectAsStateWithLifecycle()
-                    val isLoading by userManagementViewModel.isLoading.collectAsStateWithLifecycle()
-                    val error by userManagementViewModel.error.collectAsStateWithLifecycle()
-
-                    UserManagementScreen(
-                        users = users,
-                        isLoading = isLoading,
-                        error = error,
-                        onBack = { navController.popBackStack() },
-                        onUpdateUser = { user: UsuarioDTO -> userManagementViewModel.updateUser(user.id!!, user) },
-                        onDeleteUser = { user: UsuarioDTO -> userManagementViewModel.deleteUser(user.id!!) },
-                        onRetry = { userManagementViewModel.loadUsers() }
-                    )
-                }
-
-                // GESTION PROPIEDADES
-                composable(Routes.GESTION_PROPIEDADES) {
-                    val propiedadViewModelFactory = PropiedadViewModelFactory(
-                        propiedadDao = database.propiedadDao(),
-                        catalogDao = database.catalogDao(),
-                        remoteRepository = propertyRepository
-                    )
-
-                    GestionPropiedadesScreen(
-                        onBack = { navController.popBackStack() },
-                        onVerDetalle = { propiedadId -> goPropiedadDetalle(propiedadId) },
-                        // PASAMOS EL FACTORY
-                        viewModelFactory = propiedadViewModelFactory
-                    )
-                }
-
-                // GESTION DOCUMENTOS
-                composable(Routes.GESTION_DOCUMENTOS) {
-                    val documentRepository = DocumentRemoteRepository()
-                    val gestionDocumentosViewModel: GestionDocumentosViewModel = viewModel(
-                        factory = GestionDocumentosViewModelFactory(documentRepository)
-                    )
-
-                    GestionDocumentosScreen(
-                        viewModel = gestionDocumentosViewModel,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
-
-                // AGREGAR PROPIEDAD
-                composable(Routes.AGREGAR_PROPIEDAD) {
-                    val agregarPropiedadViewModelFactory = AgregarPropiedadViewModelFactory(
-                        propertyRepository = propertyRepository
-                    )
-
-                    AgregarPropiedadScreen(
-                        userPreferences = userPrefs,
-                        viewModelFactory = agregarPropiedadViewModelFactory,
-                        onNavigateBack = { navController.popBackStack() },
-                        onPropiedadCreada = { navController.popBackStack() }
-                    )
-                }
-
-                // MIS PROPIEDADES
-                composable(Routes.MIS_PROPIEDADES) {
-                    val misPropiedadesViewModelFactory = MisPropiedadesViewModelFactory(
-                        propiedadDao = database.propiedadDao(),
-                        catalogDao = database.catalogDao(),
-                        propertyRepository = propertyRepository,
-                        applicationRepository = applicationRepository
-                    )
-
-                    MisPropiedadesScreen(
-                        userPreferences = userPrefs,
-                        viewModelFactory = misPropiedadesViewModelFactory,
-                        onNavigateToAgregar = { navController.navigate(Routes.AGREGAR_PROPIEDAD) },
-                        onNavigateToDetalle = { propiedadId -> goPropiedadDetalle(propiedadId) }
-                    )
-                }
-
-                // CONTACT
-                composable(Routes.CONTACT) {
-                    val contactRepository = ContactRemoteRepository()
-                    val contactViewModel: ContactViewModel = viewModel(
-                        factory = ContactViewModelFactory(contactRepository)
-                    )
-
-                    ContactScreen(
-                        contactViewModel = contactViewModel,
-                        usuarioId = userId,
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-
-                composable(Routes.GESTION_CONTACTO) {
-                    val contactRepository = ContactRemoteRepository()
-                    val contactViewModel: ContactViewModel = viewModel(
-                        factory = ContactViewModelFactory(contactRepository)
-                    )
-
-                    val adminId = userId
-                    if (!isLoggedIn || adminId == null) {
-                        LaunchedEffect(Unit) {
-                            navController.navigate(Routes.LOGIN) {
-                                popUpTo(Routes.GESTION_CONTACTO) { inclusive = true }
-                                launchSingleTop = true
+                        CatalogoPropiedadesScreen(
+                            viewModelFactory = propiedadViewModelFactory,
+                            onVerDetalle = { propiedadId ->
+                                goPropiedadDetalle(propiedadId)
                             }
+                        )
+                    }
+
+                    // PROPIEDAD DETALLE
+                    composable(
+                        route = "${Routes.PROPIEDAD_DETALLE}/{propiedadId}",
+                        arguments = listOf(navArgument("propiedadId") { type = NavType.LongType })
+                    ) { backStackEntry ->
+                        val propiedadId = backStackEntry.arguments?.getLong("propiedadId") ?: 0L
+
+                        val propiedadDetalleViewModelFactory = PropiedadDetalleViewModelFactory(
+                            propiedadDao = database.propiedadDao(),
+                            catalogDao = database.catalogDao(),
+                            propertyRepository = propertyRepository,
+                            applicationRepository = applicationRepository
+                        )
+
+                        PropiedadDetalleScreen(
+                            propiedadId = propiedadId,
+                            userPreferences = userPrefs,
+                            viewModelFactory = propiedadDetalleViewModelFactory,
+                            onNavigateBack = { navController.popBackStack() },
+                            onNavigateToSolicitudes = goSolicitudes
+                        )
+                    }
+
+                    // PERFIL
+                    composable(Routes.PERFIL) {
+                        if (!isLoggedIn || userId == null) {
+                            LaunchedEffect(Unit) {
+                                navController.navigate(Routes.LOGIN) {
+                                    popUpTo(Routes.PERFIL) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        } else {
+                            PerfilUsuarioScreen(
+                                vm = perfilViewModel,
+                                onBack = { navController.popBackStack() },
+                                onLogout = goWelcome
+                            )
                         }
-                    } else {
-                        GestionContactoScreen(
+                    }
+
+                    // 1. SOLICITUDES ENVIADAS (Arrendatario)
+                    composable(Routes.SOLICITUDES) {
+                        val solicitudesViewModelFactory = SolicitudesViewModelFactory(
+                            solicitudDao = database.solicitudDao(),
+                            propiedadDao = database.propiedadDao(),
+                            catalogDao = database.catalogDao(),
+                            remoteRepository = applicationRepository,
+                            propertyRepository = propertyRepository
+                        )
+
+                        SolicitudesScreen(
+                            userPreferences = userPrefs,
+                            viewModelFactory = solicitudesViewModelFactory,
+                            mode = SolicitudesMode.ARRENDATARIO, // Forzamos el rol inquilino
+                            onNavigateToDetalle = goSolicitudDetalle // Redirige al detalle de la solicitud
+                        )
+                    }
+
+                    // 2. SOLICITUDES RECIBIDAS (Propietario)
+                    composable(Routes.SOLICITUDES_RECIBIDAS) {
+                        val solicitudesViewModelFactory = SolicitudesViewModelFactory(
+                            solicitudDao = database.solicitudDao(),
+                            propiedadDao = database.propiedadDao(),
+                            catalogDao = database.catalogDao(),
+                            remoteRepository = applicationRepository,
+                            propertyRepository = propertyRepository
+                        )
+
+                        SolicitudesScreen(
+                            userPreferences = userPrefs,
+                            viewModelFactory = solicitudesViewModelFactory,
+                            mode = SolicitudesMode.PROPIETARIO, // Usamos la opción del Enum limpio
+                            onNavigateToDetalle = goSolicitudDetalle // Redirige al detalle de la solicitud
+                        )
+                    }
+
+                    // 3. SOLICITUDES ADMINISTRADOR
+                    composable(Routes.SOLICITUDES_ADMIN) {
+                        val solicitudesViewModelFactory = SolicitudesViewModelFactory(
+                            solicitudDao = database.solicitudDao(),
+                            propiedadDao = database.propiedadDao(),
+                            catalogDao = database.catalogDao(),
+                            remoteRepository = applicationRepository,
+                            propertyRepository = propertyRepository
+                        )
+
+                        SolicitudesScreen(
+                            userPreferences = userPrefs,
+                            viewModelFactory = solicitudesViewModelFactory,
+                            mode = SolicitudesMode.ADMIN_GLOBAL,
+                            onNavigateToDetalle = goSolicitudDetalle // Redirige al detalle de la solicitud
+                        )
+                    }
+
+                    // MIS DOCUMENTOS
+                    composable(Routes.MIS_DOCUMENTOS) {
+                        val documentRepository = DocumentRemoteRepository()
+                        val misDocumentosViewModel: MisDocumentosViewModel = viewModel(
+                            factory = MisDocumentosViewModelFactory(documentRepository)
+                        )
+
+                        MisDocumentosScreen(
+                            viewModel = misDocumentosViewModel,
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable(Routes.MIS_ARRIENDOS) {
+                        MisArriendosScreen(
+                            userPreferences = userPrefs,
+                            onBack = { navController.popBackStack() },
+                            onVerPropiedad = goPropiedadDetalle
+                        )
+                    }
+
+                    // ADMIN PANEL
+                    composable(Routes.ADMIN_PANEL) {
+                        AdminPanelScreen(
+                            onBack = { navController.popBackStack() },
+                            onGestionPropiedades = { navController.navigate(Routes.GESTION_PROPIEDADES) },
+                            onGestionDocumentos = { navController.navigate(Routes.GESTION_DOCUMENTOS) },
+                            onGestionContacto = { navController.navigate(Routes.GESTION_CONTACTO) }
+                        )
+                    }
+
+                    // GESTION USUARIOS
+                    composable(Routes.GESTION_USUARIOS) {
+                        val userRepository = UserRepository(RetrofitClient.userServiceApi)
+                        val userManagementViewModel: UserManagementViewModel = viewModel(
+                            factory = UserManagementViewModelFactory(userRepository)
+                        )
+
+                        val users by userManagementViewModel.users.collectAsStateWithLifecycle()
+                        val isLoading by userManagementViewModel.isLoading.collectAsStateWithLifecycle()
+                        val error by userManagementViewModel.error.collectAsStateWithLifecycle()
+
+                        UserManagementScreen(
+                            users = users,
+                            isLoading = isLoading,
+                            error = error,
+                            onBack = { navController.popBackStack() },
+                            onUpdateUser = { user: UsuarioDTO -> userManagementViewModel.updateUser(user.id!!, user) },
+                            onDeleteUser = { user: UsuarioDTO -> userManagementViewModel.deleteUser(user.id!!) },
+                            onRetry = { userManagementViewModel.loadUsers() }
+                        )
+                    }
+
+                    // GESTION PROPIEDADES
+                    composable(Routes.GESTION_PROPIEDADES) {
+                        val propiedadViewModelFactory = PropiedadViewModelFactory(
+                            propiedadDao = database.propiedadDao(),
+                            catalogDao = database.catalogDao(),
+                            remoteRepository = propertyRepository
+                        )
+
+                        GestionPropiedadesScreen(
+                            onBack = { navController.popBackStack() },
+                            onVerDetalle = { propiedadId -> goPropiedadDetalle(propiedadId) },
+                            viewModelFactory = propiedadViewModelFactory
+                        )
+                    }
+
+                    // GESTION DOCUMENTOS
+                    composable(Routes.GESTION_DOCUMENTOS) {
+                        val documentRepository = DocumentRemoteRepository()
+                        val gestionDocumentosViewModel: GestionDocumentosViewModel = viewModel(
+                            factory = GestionDocumentosViewModelFactory(documentRepository)
+                        )
+
+                        GestionDocumentosScreen(
+                            viewModel = gestionDocumentosViewModel,
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    // AGREGAR PROPIEDAD
+                    composable(Routes.AGREGAR_PROPIEDAD) {
+                        val agregarPropiedadViewModelFactory = AgregarPropiedadViewModelFactory(
+                            propertyRepository = propertyRepository
+                        )
+
+                        AgregarPropiedadScreen(
+                            userPreferences = userPrefs,
+                            viewModelFactory = agregarPropiedadViewModelFactory,
+                            onNavigateBack = { navController.popBackStack() },
+                            onPropiedadCreada = { navController.popBackStack() }
+                        )
+                    }
+
+                    // MIS PROPIEDADES
+                    composable(Routes.MIS_PROPIEDADES) {
+                        val misPropiedadesViewModelFactory = MisPropiedadesViewModelFactory(
+                            propiedadDao = database.propiedadDao(),
+                            catalogDao = database.catalogDao(),
+                            propertyRepository = propertyRepository,
+                            applicationRepository = applicationRepository
+                        )
+
+                        MisPropiedadesScreen(
+                            userPreferences = userPrefs,
+                            viewModelFactory = misPropiedadesViewModelFactory,
+                            onNavigateToAgregar = { navController.navigate(Routes.AGREGAR_PROPIEDAD) },
+                            onNavigateToDetalle = { propiedadId -> goPropiedadDetalle(propiedadId) }
+                        )
+                    }
+
+                    // CONTACT
+                    composable(Routes.CONTACT) {
+                        val contactRepository = ContactRemoteRepository()
+                        val contactViewModel: ContactViewModel = viewModel(
+                            factory = ContactViewModelFactory(contactRepository)
+                        )
+
+                        ContactScreen(
                             contactViewModel = contactViewModel,
-                            adminId = adminId,
+                            usuarioId = userId,
                             onBack = { navController.popBackStack() }
                         )
                     }
-                }
 
-                // SOLICITUD DETALLE
-                composable(
-                    route = "${Routes.SOLICITUD_DETALLE}/{solicitudId}",
-                    arguments = listOf(navArgument("solicitudId") { type = NavType.LongType })
-                ) { backStackEntry ->
-                    val solicitudId = backStackEntry.arguments?.getLong("solicitudId") ?: 0L
+                    composable(Routes.GESTION_CONTACTO) {
+                        val contactRepository = ContactRemoteRepository()
+                        val contactViewModel: ContactViewModel = viewModel(
+                            factory = ContactViewModelFactory(contactRepository)
+                        )
 
-                    SolicitudDetalleScreen(
-                        solicitudId = solicitudId,
-                        userPreferences = userPrefs,
-                        onBack = { navController.popBackStack() },
-                        onVerPropiedad = { propiedadId -> goPropiedadDetalle(propiedadId) }
-                    )
+                        val adminId = userId
+                        if (!isLoggedIn || adminId == null) {
+                            LaunchedEffect(Unit) {
+                                navController.navigate(Routes.LOGIN) {
+                                    popUpTo(Routes.GESTION_CONTACTO) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        } else {
+                            GestionContactoScreen(
+                                contactViewModel = contactViewModel,
+                                adminId = adminId,
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+                    }
+
+                    // SOLICITUD DETALLE
+                    composable(
+                        route = "${Routes.SOLICITUD_DETALLE}/{solicitudId}",
+                        arguments = listOf(navArgument("solicitudId") { type = NavType.LongType })
+                    ) { backStackEntry ->
+                        val solicitudId = backStackEntry.arguments?.getLong("solicitudId") ?: 0L
+
+                        SolicitudDetalleScreen(
+                            solicitudId = solicitudId,
+                            userPreferences = userPrefs,
+                            onBack = { navController.popBackStack() },
+                            onVerPropiedad = { propiedadId -> goPropiedadDetalle(propiedadId) }
+                        )
+                    }
                 }
             }
         }
     }
-}
 }

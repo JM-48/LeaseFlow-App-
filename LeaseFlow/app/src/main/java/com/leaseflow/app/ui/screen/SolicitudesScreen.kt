@@ -17,124 +17,77 @@ import com.leaseflow.app.ui.components.SolicitudCard
 import com.leaseflow.app.ui.viewmodel.SolicitudesViewModel
 import com.leaseflow.app.ui.viewmodel.SolicitudesViewModelFactory
 
-/**
- * Pantalla de solicitudes multi-rol
- */
+enum class SolicitudesMode { ARRENDATARIO, PROPIETARIO, ADMIN_GLOBAL }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SolicitudesScreen(
     userPreferences: UserPreferences,
     viewModelFactory: SolicitudesViewModelFactory,
-    mode: SolicitudesMode = SolicitudesMode.AUTO,
-    onNavigateToDetalle: (Long) -> Unit = {},
+    mode: SolicitudesMode,
+    onNavigateToDetalle: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val viewModel: SolicitudesViewModel = viewModel(factory = viewModelFactory)
 
-    // Estados del ViewModel
     val solicitudes by viewModel.solicitudes.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMsg by viewModel.errorMsg.collectAsState()
     val successMsg by viewModel.successMsg.collectAsState()
 
-    // Datos del usuario
+    // Resuelve la sesión del usuario guardada en DataStore / SharedPreferences
     val userId by userPreferences.userId.collectAsState(initial = null)
-    val userRoleId by userPreferences.userRoleId.collectAsState(initial = null)
-
-    // Variables locales
-    val currentUserId = userId
-    val currentRoleId = userRoleId ?: 3
-
-    // Determinamos el modo efectivo de operación
-    val effectiveMode = remember(mode, currentRoleId) {
-        when (mode) {
-            SolicitudesMode.AUTO -> {
-                when (currentRoleId) {
-                    1 -> SolicitudesMode.PERSONAL
-                    2 -> SolicitudesMode.RECIBIDAS
-                    else -> SolicitudesMode.PERSONAL // Administrador por defecto ve sus propias solicitudes
-                }
-            }
-            else -> mode
-        }
-    }
-
-    // Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // =====================================================================
-    // CORRECCIÓN CLAVE 1: Añadir effectiveMode como clave del LaunchedEffect
-    // para gatillar la recarga correcta al cambiar de opción en el Drawer.
-    // =====================================================================
-    LaunchedEffect(currentUserId, currentRoleId, effectiveMode) {
-        currentUserId?.let { id ->
-            when (effectiveMode) {
+    // Función lambda reutilizable para refrescar de acuerdo al modo activo
+    val ejecutarCarga = {
+        userId?.let { id ->
+            when (mode) {
+                SolicitudesMode.ARRENDATARIO -> viewModel.cargarSolicitudesArrendatario(id)
+                SolicitudesMode.PROPIETARIO -> viewModel.cargarSolicitudesPropietario(id)
                 SolicitudesMode.ADMIN_GLOBAL -> viewModel.cargarTodasSolicitudes()
-                SolicitudesMode.RECIBIDAS -> viewModel.cargarSolicitudesPropietario(id)
-                SolicitudesMode.PERSONAL -> viewModel.cargarSolicitudesArrendatario(id)
-                SolicitudesMode.AUTO -> viewModel.cargarSolicitudesArrendatario(id)
             }
         }
     }
 
-    // Mostrar mensaje de éxito y actualizar
-    LaunchedEffect(successMsg, effectiveMode) {
+    // Carga inicial al montar la pantalla o cambiar de pestaña
+    LaunchedEffect(userId, mode) {
+        ejecutarCarga()
+    }
+
+    // Escucha notificaciones de éxito (Mensajes de confirmación)
+    LaunchedEffect(successMsg) {
         successMsg?.let { msg ->
-            snackbarHostState.showSnackbar(
-                message = msg,
-                duration = SnackbarDuration.Short
-            )
+            snackbarHostState.showSnackbar(msg)
             viewModel.clearSuccess()
-
-            currentUserId?.let { id ->
-                when (effectiveMode) {
-                    SolicitudesMode.ADMIN_GLOBAL -> viewModel.cargarTodasSolicitudes()
-                    SolicitudesMode.RECIBIDAS -> viewModel.cargarSolicitudesPropietario(id)
-                    SolicitudesMode.PERSONAL -> viewModel.cargarSolicitudesArrendatario(id)
-                    SolicitudesMode.AUTO -> viewModel.cargarSolicitudesArrendatario(id)
-                }
-            }
         }
     }
 
-    // Título según rol/modo activo
-    val titulo = when (effectiveMode) {
-        SolicitudesMode.ADMIN_GLOBAL -> "Gestión de Solicitudes"
-        SolicitudesMode.RECIBIDAS -> "Solicitudes Recibidas"
-        else -> "Mis Solicitudes"
+    val tituloBarra = when (mode) {
+        SolicitudesMode.ARRENDATARIO -> "Mis Solicitudes Enviadas"
+        SolicitudesMode.PROPIETARIO -> "Solicitudes Recibidas"
+        SolicitudesMode.ADMIN_GLOBAL -> "Gestor Global de Solicitudes"
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(titulo) },
+                title = { Text(tituloBarra) },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            currentUserId?.let { id ->
-                                when (effectiveMode) {
-                                    SolicitudesMode.ADMIN_GLOBAL -> viewModel.cargarTodasSolicitudes()
-                                    SolicitudesMode.RECIBIDAS -> viewModel.cargarSolicitudesPropietario(id)
-                                    SolicitudesMode.PERSONAL -> viewModel.cargarSolicitudesArrendatario(id)
-                                    SolicitudesMode.AUTO -> viewModel.cargarSolicitudesArrendatario(id)
-                                }
-                            }
-                        }
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
+                    IconButton(onClick = { ejecutarCarga() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refrescar")
                     }
                 }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
+    ) { innerPadding ->
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(innerPadding)
         ) {
             when {
-                // ESTADO: Cargando
                 isLoading && solicitudes.isEmpty() -> {
                     Column(
                         modifier = Modifier.fillMaxSize(),
@@ -142,127 +95,69 @@ fun SolicitudesScreen(
                         verticalArrangement = Arrangement.Center
                     ) {
                         CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Cargando solicitudes...")
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Sincronizando con LeaseFlow...", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
 
-                // ESTADO: Error
                 errorMsg != null -> {
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text("Error", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.error)
-                        Text(errorMsg ?: "Error desconocido", color = MaterialTheme.colorScheme.error)
-                        Button(onClick = { viewModel.clearError() }) { Text("Reintentar") }
+                        Text("Error de comunicación", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
+                        Text(errorMsg ?: "Ocurrió un problema inesperado", textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = {
+                            viewModel.clearError()
+                            ejecutarCarga()
+                        }) {
+                            Text("Reintentar Conexión")
+                        }
                     }
                 }
 
-                // ESTADO: Sin solicitudes
                 solicitudes.isEmpty() -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text("Sin solicitudes", style = MaterialTheme.typography.headlineMedium)
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = if (effectiveMode == SolicitudesMode.RECIBIDAS) "No has recibido solicitudes" else "No tienes solicitudes enviadas",
-                            textAlign = TextAlign.Center
+                            text = "No se registran solicitudes para mostrar en esta sección.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(32.dp)
                         )
                     }
                 }
 
-                // ESTADO: Lista de solicitudes
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        item {
-                            SolicitudesStatsCard(solicitudes = solicitudes)
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-
-                        items(items = solicitudes, key = { it.solicitud.id }) { solicitudConDatos ->
-
-                            // Determinar si puede gestionar (Solo admin global o propietario si está PENDIENTE)
-                            val puedeGestionar = when (effectiveMode) {
-                                SolicitudesMode.ADMIN_GLOBAL -> true
-                                SolicitudesMode.RECIBIDAS -> solicitudConDatos.nombreEstado?.uppercase() == "PENDIENTE"
-                                else -> false
-                            }
-
+                        items(items = solicitudes, key = { it.solicitud.id }) { item ->
                             SolicitudCard(
-                                solicitudConDatos = solicitudConDatos,
-                                onClick = { onNavigateToDetalle(solicitudConDatos.solicitud.propiedad_id) },
-                                mostrarSolicitante = effectiveMode != SolicitudesMode.PERSONAL,
-                                // CORRECCIÓN CLAVE 2: Forzar la comparación robusta en mayúsculas aquí también
-                                onCancelarSolicitud = if (effectiveMode == SolicitudesMode.PERSONAL && solicitudConDatos.nombreEstado?.uppercase() == "PENDIENTE") {
-                                    {
-                                        currentUserId?.let { uid ->
-                                            viewModel.cancelarSolicitud(solicitudConDatos.solicitud.id, uid)
+                                solicitudConDatos = item,
+                                onClick = { onNavigateToDetalle(item.solicitud.id) },
+                                mostrarSolicitante = (mode != SolicitudesMode.ARRENDATARIO),
+                                onActualizarEstado = if (mode != SolicitudesMode.ARRENDATARIO) {
+                                    { nuevoEstado ->
+                                        if (nuevoEstado == "ACEPTADA") {
+                                            viewModel.aprobarSolicitud(item.solicitud.id)
+                                        } else {
+                                            viewModel.rechazarSolicitud(item.solicitud.id)
                                         }
                                     }
                                 } else null,
-                                onActualizarEstado = if (puedeGestionar) {
-                                    { nuevoEstado ->
-                                        if (nuevoEstado.uppercase() == "ACEPTADA" || nuevoEstado.uppercase() == "APROBADA") {
-                                            viewModel.aprobarSolicitud(solicitudConDatos.solicitud.id)
-                                        } else if (nuevoEstado.uppercase() == "RECHAZADA") {
-                                            viewModel.rechazarSolicitud(solicitudConDatos.solicitud.id)
-                                        }
-                                    }
+                                onCancelarSolicitud = if (mode == SolicitudesMode.ARRENDATARIO) {
+                                    { userId?.let { uid -> viewModel.cancelarSolicitud(item.solicitud.id, uid) } }
                                 } else null
                             )
-                        }
-                    }
-
-                    if (isLoading) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
                         }
                     }
                 }
             }
         }
-    }
-}
-
-enum class SolicitudesMode {
-    AUTO,
-    PERSONAL,
-    RECIBIDAS,
-    ADMIN_GLOBAL
-}
-
-@Composable
-private fun SolicitudesStatsCard(
-    solicitudes: List<com.leaseflow.app.ui.viewmodel.SolicitudConDatos>
-) {
-    val pendientes = solicitudes.count { it.nombreEstado?.uppercase() == "PENDIENTE" }
-    val aceptadas = solicitudes.count { it.nombreEstado?.uppercase() == "ACEPTADA" || it.nombreEstado?.uppercase() == "APROBADA" }
-    val rechazadas = solicitudes.count { it.nombreEstado?.uppercase() == "RECHAZADA" }
-
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            StatItem("Pendientes", pendientes, MaterialTheme.colorScheme.tertiary)
-            StatItem("Aceptadas", aceptadas, MaterialTheme.colorScheme.primary)
-            StatItem("Rechazadas", rechazadas, MaterialTheme.colorScheme.error)
-        }
-    }
-}
-
-@Composable
-private fun StatItem(label: String, value: Int, color: androidx.compose.ui.graphics.Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value.toString(), style = MaterialTheme.typography.headlineMedium, color = color)
-        Text(label, style = MaterialTheme.typography.bodySmall)
     }
 }

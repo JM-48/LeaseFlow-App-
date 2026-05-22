@@ -12,7 +12,8 @@ object Routes {
     const val SOLICITUDES = "solicitudes"
     const val SOLICITUDES_RECIBIDAS = "solicitudes_recibidas"
     const val SOLICITUDES_ADMIN = "solicitudes_admin"
-    const val SOLICITUD_DETALLE = "solicitud_detalle"
+    // Modifica solo esta línea en tu archivo Routes.kt actual:
+    const val SOLICITUD_DETALLE = "solicitud_detalle/{id}"
     const val MIS_PROPIEDADES = "mis_propiedades"
     const val AGREGAR_PROPIEDAD = "agregar_propiedad"
     const val MIS_DOCUMENTOS = "mis_documentos"
