@@ -262,7 +262,8 @@ fun SolicitudCard(
                 }
             }
 
-            if (onCancelarSolicitud != null && solicitudConDatos.nombreEstado == "PENDIENTE") {
+            // Cambiamos == "PENDIENTE" por ?.uppercase() == "PENDIENTE"
+            if (onCancelarSolicitud != null && solicitudConDatos.nombreEstado?.uppercase() == "PENDIENTE") {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 OutlinedButton(
                     onClick = onCancelarSolicitud,

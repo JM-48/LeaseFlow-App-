@@ -13,7 +13,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.leaseflow.app.data.local.LeaseFlowDatabase
 import com.leaseflow.app.data.local.storage.UserPreferences
 import kotlinx.coroutines.launch
 
@@ -134,11 +133,30 @@ fun AppDrawer(
                     }
                 )
 
+                // ==========================================
+                // SECCIÓN ARRENDATARIO
+                // ==========================================
                 if (esArrendatario || esAdmin) {
+
+                    // Si es admin, le ponemos un título para que sepa qué sección es esta
+                    if (esAdmin) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = Color.White.copy(alpha = 0.16f)
+                        )
+                        Text(
+                            text = "Arrendatario",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White.copy(alpha = 0.88f),
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+
                     DrawerItem(
                         icon = Icons.Default.Assignment,
                         label = "Mis Solicitudes",
                         onClick = {
+                            // Esto dispara el MODO PERSONAL (Arrendatario)
                             navController.navigate(Routes.SOLICITUDES)
                             onCloseDrawer()
                         }
@@ -163,6 +181,9 @@ fun AppDrawer(
                     )
                 }
 
+                // ==========================================
+                // SECCIÓN PROPIETARIO
+                // ==========================================
                 if (esPropietario || esAdmin) {
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -195,9 +216,10 @@ fun AppDrawer(
                     )
 
                     DrawerItem(
-                        icon = Icons.Default.Assignment,
+                        icon = Icons.Default.AssignmentReturned, // Cambié el icono para diferenciarlo
                         label = "Solicitudes Recibidas",
                         onClick = {
+                            // Esto dispara el MODO RECIBIDAS (Propietario)
                             navController.navigate(Routes.SOLICITUDES_RECIBIDAS)
                             onCloseDrawer()
                         }
@@ -213,6 +235,9 @@ fun AppDrawer(
                     )
                 }
 
+                // ==========================================
+                // SECCIÓN ADMINISTRADOR
+                // ==========================================
                 if (esAdmin) {
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -231,6 +256,17 @@ fun AppDrawer(
                         label = "Panel Admin",
                         onClick = {
                             navController.navigate(Routes.ADMIN_PANEL)
+                            onCloseDrawer()
+                        }
+                    )
+
+                    // ---> ¡AQUÍ ESTÁ EL NUEVO GESTOR GLOBAL DE SOLICITUDES! <---
+                    DrawerItem(
+                        icon = Icons.Default.List,
+                        label = "Gestor Solicitudes Global",
+                        onClick = {
+                            // Esto dispara el MODO ADMIN_GLOBAL
+                            navController.navigate(Routes.SOLICITUDES_ADMIN)
                             onCloseDrawer()
                         }
                     )

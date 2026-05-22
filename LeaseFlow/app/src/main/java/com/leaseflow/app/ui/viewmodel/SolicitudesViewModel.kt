@@ -78,7 +78,34 @@ class SolicitudesViewModel(
                 when (val result = remoteRepository.obtenerSolicitudesUsuario(usuarioId)) {
                     is ApiResult.Success -> {
                         Log.d(TAG, "Solicitudes cargadas: ${result.data.size}")
-                        _solicitudes.value = mapearSolicitudes(result.data)
+
+                        // --- INICIO DEL ENRIQUECIMIENTO DE DATOS ---
+                        val solicitudesMapeadas = result.data.map { dto ->
+                            var solicitudEnriquecida = mapearSolicitud(dto)
+
+                            // Si el backend no mandó el título, lo vamos a buscar nosotros a PropertyService
+                            if (solicitudEnriquecida.tituloPropiedad == null && propertyRepository != null) {
+                                val propId = solicitudEnriquecida.solicitud.propiedad_id
+                                when (val propResult = propertyRepository.obtenerPropiedadPorId(propId)) {
+                                    is ApiResult.Success -> {
+                                        val propReal = propResult.data
+                                        // Actualizamos el objeto con los datos reales!
+                                        solicitudEnriquecida = solicitudEnriquecida.copy(
+                                            tituloPropiedad = propReal.titulo ?: "Propiedad $propId",
+                                            codigoPropiedad = propReal.codigo,
+                                            direccionPropiedad = propReal.direccion,
+                                            precioMensual = propReal.precioMensual,
+                                            fotoUrl = propReal.fotos?.firstOrNull()?.url
+                                        )
+                                    }
+                                    else -> Log.w(TAG, "No se pudo obtener detalles de la propiedad $propId")
+                                }
+                            }
+                            solicitudEnriquecida
+                        }
+                        // --- FIN DEL ENRIQUECIMIENTO ---
+
+                        _solicitudes.value = solicitudesMapeadas
                     }
                     is ApiResult.Error -> {
                         Log.e(TAG, "Error: ${result.message}")

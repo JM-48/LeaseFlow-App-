@@ -36,7 +36,6 @@ fun SolicitudesScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMsg by viewModel.errorMsg.collectAsState()
     val successMsg by viewModel.successMsg.collectAsState()
-    // Eliminamos 'solicitudCreada' porque no existe en el ViewModel, usamos successMsg
 
     // Datos del usuario
     val userId by userPreferences.userId.collectAsState(initial = null)
@@ -46,13 +45,14 @@ fun SolicitudesScreen(
     val currentUserId = userId
     val currentRoleId = userRoleId ?: 3
 
+    // Determinamos el modo efectivo de operación
     val effectiveMode = remember(mode, currentRoleId) {
         when (mode) {
             SolicitudesMode.AUTO -> {
                 when (currentRoleId) {
                     1 -> SolicitudesMode.PERSONAL
                     2 -> SolicitudesMode.RECIBIDAS
-                    else -> SolicitudesMode.PERSONAL
+                    else -> SolicitudesMode.PERSONAL // Administrador por defecto ve sus propias solicitudes
                 }
             }
             else -> mode
@@ -63,9 +63,10 @@ fun SolicitudesScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     // =====================================================================
-    // CORRECCIÓN 1: Lógica de carga según el rol (Usando las funciones reales)
+    // CORRECCIÓN CLAVE 1: Añadir effectiveMode como clave del LaunchedEffect
+    // para gatillar la recarga correcta al cambiar de opción en el Drawer.
     // =====================================================================
-    LaunchedEffect(currentUserId, currentRoleId) {
+    LaunchedEffect(currentUserId, currentRoleId, effectiveMode) {
         currentUserId?.let { id ->
             when (effectiveMode) {
                 SolicitudesMode.ADMIN_GLOBAL -> viewModel.cargarTodasSolicitudes()
@@ -76,15 +77,15 @@ fun SolicitudesScreen(
         }
     }
 
-    // Mostrar mensaje de éxito
-    LaunchedEffect(successMsg) {
+    // Mostrar mensaje de éxito y actualizar
+    LaunchedEffect(successMsg, effectiveMode) {
         successMsg?.let { msg ->
             snackbarHostState.showSnackbar(
                 message = msg,
                 duration = SnackbarDuration.Short
             )
             viewModel.clearSuccess()
-            // Recargar lista después de una acción exitosa
+
             currentUserId?.let { id ->
                 when (effectiveMode) {
                     SolicitudesMode.ADMIN_GLOBAL -> viewModel.cargarTodasSolicitudes()
@@ -96,7 +97,7 @@ fun SolicitudesScreen(
         }
     }
 
-    // Titulo según rol
+    // Título según rol/modo activo
     val titulo = when (effectiveMode) {
         SolicitudesMode.ADMIN_GLOBAL -> "Gestión de Solicitudes"
         SolicitudesMode.RECIBIDAS -> "Solicitudes Recibidas"
@@ -110,7 +111,6 @@ fun SolicitudesScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            // CORRECCIÓN: Recargar usando la lógica correcta
                             currentUserId?.let { id ->
                                 when (effectiveMode) {
                                     SolicitudesMode.ADMIN_GLOBAL -> viewModel.cargarTodasSolicitudes()
@@ -169,7 +169,7 @@ fun SolicitudesScreen(
                     ) {
                         Text("Sin solicitudes", style = MaterialTheme.typography.headlineMedium)
                         Text(
-                            text = if (currentRoleId == 2) "No has recibido solicitudes" else "No tienes solicitudes enviadas",
+                            text = if (effectiveMode == SolicitudesMode.RECIBIDAS) "No has recibido solicitudes" else "No tienes solicitudes enviadas",
                             textAlign = TextAlign.Center
                         )
                     }
@@ -189,21 +189,19 @@ fun SolicitudesScreen(
 
                         items(items = solicitudes, key = { it.solicitud.id }) { solicitudConDatos ->
 
-                            // Determinar si puede gestionar (Solo admin o propietario si está PENDIENTE)
+                            // Determinar si puede gestionar (Solo admin global o propietario si está PENDIENTE)
                             val puedeGestionar = when (effectiveMode) {
                                 SolicitudesMode.ADMIN_GLOBAL -> true
-                                SolicitudesMode.RECIBIDAS -> solicitudConDatos.nombreEstado == "PENDIENTE"
+                                SolicitudesMode.RECIBIDAS -> solicitudConDatos.nombreEstado?.uppercase() == "PENDIENTE"
                                 else -> false
                             }
 
-                            // =====================================================================
-                            // CORRECCIÓN 2: Mapear la acción a las funciones reales (aprobar/rechazar)
-                            // =====================================================================
                             SolicitudCard(
                                 solicitudConDatos = solicitudConDatos,
                                 onClick = { onNavigateToDetalle(solicitudConDatos.solicitud.propiedad_id) },
                                 mostrarSolicitante = effectiveMode != SolicitudesMode.PERSONAL,
-                                onCancelarSolicitud = if (effectiveMode == SolicitudesMode.PERSONAL && solicitudConDatos.nombreEstado == "PENDIENTE") {
+                                // CORRECCIÓN CLAVE 2: Forzar la comparación robusta en mayúsculas aquí también
+                                onCancelarSolicitud = if (effectiveMode == SolicitudesMode.PERSONAL && solicitudConDatos.nombreEstado?.uppercase() == "PENDIENTE") {
                                     {
                                         currentUserId?.let { uid ->
                                             viewModel.cancelarSolicitud(solicitudConDatos.solicitud.id, uid)
@@ -212,9 +210,9 @@ fun SolicitudesScreen(
                                 } else null,
                                 onActualizarEstado = if (puedeGestionar) {
                                     { nuevoEstado ->
-                                        if (nuevoEstado == "ACEPTADA" || nuevoEstado == "APROBADA") {
+                                        if (nuevoEstado.uppercase() == "ACEPTADA" || nuevoEstado.uppercase() == "APROBADA") {
                                             viewModel.aprobarSolicitud(solicitudConDatos.solicitud.id)
-                                        } else if (nuevoEstado == "RECHAZADA") {
+                                        } else if (nuevoEstado.uppercase() == "RECHAZADA") {
                                             viewModel.rechazarSolicitud(solicitudConDatos.solicitud.id)
                                         }
                                     }
@@ -245,9 +243,9 @@ enum class SolicitudesMode {
 private fun SolicitudesStatsCard(
     solicitudes: List<com.leaseflow.app.ui.viewmodel.SolicitudConDatos>
 ) {
-    val pendientes = solicitudes.count { it.nombreEstado == "PENDIENTE" }
-    val aceptadas = solicitudes.count { it.nombreEstado == "ACEPTADA" || it.nombreEstado == "APROBADA" }
-    val rechazadas = solicitudes.count { it.nombreEstado == "RECHAZADA" }
+    val pendientes = solicitudes.count { it.nombreEstado?.uppercase() == "PENDIENTE" }
+    val aceptadas = solicitudes.count { it.nombreEstado?.uppercase() == "ACEPTADA" || it.nombreEstado?.uppercase() == "APROBADA" }
+    val rechazadas = solicitudes.count { it.nombreEstado?.uppercase() == "RECHAZADA" }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
