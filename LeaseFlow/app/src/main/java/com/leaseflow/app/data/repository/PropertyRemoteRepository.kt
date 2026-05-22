@@ -81,16 +81,32 @@ class PropertyRemoteRepository {
     ): ApiResult<List<PropertyRemoteDTO>> {
         Log.d(TAG, "Listando propiedades: includeDetails=$includeDetails")
 
-        return when (val result = safeApiCall { api.listarTodasPropiedades(includeDetails) }) {
+        // 1. Agregamos los parámetros page y size a la llamada de Retrofit
+        val response = safeApiCall {
+            api.listarTodasPropiedades(page = 0, size = 100, includeDetails = includeDetails)
+        }
+
+        return when (response) {
             is ApiResult.Success -> {
-                Log.d(TAG, "Propiedades obtenidas: ${result.data.size}")
-                result
+                // 2. response.data ahora es de tipo PageResponse
+                // Por lo tanto, nuestra lista de propiedades está dentro de .content
+                val propiedades = response.data.content
+
+                Log.d(TAG, "Propiedades obtenidas: ${propiedades.size}")
+
+                // 3. Empaquetamos la lista limpia de vuelta en un ApiResult.Success
+                ApiResult.Success(propiedades)
             }
             is ApiResult.Error -> {
-                Log.e(TAG, "Error al listar propiedades: ${result.message}")
-                result
+                Log.e(TAG, "Error al listar propiedades: ${response.message}")
+                // Retornamos el error tal cual (con un cast seguro para Kotlin)
+                @Suppress("UNCHECKED_CAST")
+                response as ApiResult<List<PropertyRemoteDTO>>
             }
-            else -> result
+            else -> {
+                @Suppress("UNCHECKED_CAST")
+                response as ApiResult<List<PropertyRemoteDTO>>
+            }
         }
     }
 

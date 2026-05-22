@@ -14,8 +14,10 @@ interface PropertyServiceApi {
 
     @GET("api/propiedades")
     suspend fun listarTodasPropiedades(
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 100, // Traemos 100 de golpe para que el mapa se llene bien
         @Query("includeDetails") includeDetails: Boolean = false
-    ): Response<List<PropertyRemoteDTO>>
+    ): Response<PageResponse<PropertyRemoteDTO>>
 
     @GET("api/propiedades/usuario/{usuarioId}")
     suspend fun listarPropiedadesPorUsuario(
