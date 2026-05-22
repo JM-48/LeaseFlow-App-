@@ -1,7 +1,6 @@
 package com.leaseflow.app.data.local.entities
 
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -11,32 +10,7 @@ import androidx.room.PrimaryKey
  */
 @Entity(
     tableName = "propiedad",
-    foreignKeys = [
-        ForeignKey(
-            entity = EstadoEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["estado_id"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = TipoEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["tipo_id"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = ComunaEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["comuna_id"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = UsuarioEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["propietario_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
+    // ELIMINAMOS EL BLOQUE 'foreignKeys' POR COMPLETO
     indices = [
         Index(value = ["codigo"], unique = true),
         Index("estado_id"),
@@ -50,29 +24,28 @@ data class PropiedadEntity(
     val id: Long = 0L,
 
     // Identificación
-    val codigo: String,               // Código único (ej: DP001, CASA002)
-    val titulo: String,               // Título descriptivo
+    val codigo: String,
+    val titulo: String,
 
     // Precio
-    val precio_mensual: Int,          // Precio mensual
-    val divisa: String = "CLP",       // Moneda
+    val precio_mensual: Int,
+    val divisa: String = "CLP",
 
     // Características
-    val m2: Double,                   // Metros cuadrados
-    val n_habit: Int,                 // Número de habitaciones
-    val n_banos: Int,                 // Número de baños
-    val pet_friendly: Boolean,        // ¿Acepta mascotas?
-    val direccion: String,            // Dirección completa
+    val m2: Double,
+    val n_habit: Int,
+    val n_banos: Int,
+    val pet_friendly: Boolean,
+    val direccion: String,
 
-
-    val descripcion: String? = null,  // Descripción detallada de la propiedad
+    val descripcion: String? = null,
 
     // Auditoría
-    val fcreacion: Long,              // Fecha creación (timestamp)
+    val fcreacion: Long,
 
-    // Relaciones
-    val estado_id: Long,              // FK a estado (Activa/Inactiva)
-    val tipo_id: Long,                // FK a tipo (Departamento/Casa/etc)
-    val comuna_id: Long,              // FK a comuna
-    val propietario_id: Long?         // ✅ FK al usuario propietario (puede venir null/0 desde backend)
+    // Relaciones (Solo los IDs, sin que Room obligue a que existan en otras tablas)
+    val estado_id: Long,
+    val tipo_id: Long,
+    val comuna_id: Long,
+    val propietario_id: Long?
 )

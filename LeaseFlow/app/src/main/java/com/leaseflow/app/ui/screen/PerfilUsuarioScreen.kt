@@ -77,6 +77,7 @@ fun PerfilUsuarioScreen(
     var snombre by rememberSaveable { mutableStateOf("") }
     var papellido by rememberSaveable { mutableStateOf("") }
     var telefono by rememberSaveable { mutableStateOf("") }
+    var rut by rememberSaveable { mutableStateOf("") }
 
     var isEditing by rememberSaveable { mutableStateOf(false) }
     var profilePhotoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
@@ -119,6 +120,7 @@ fun PerfilUsuarioScreen(
             snombre = user.snombre
             papellido = user.papellido
             telefono = user.ntelefono
+            rut = user.rut ?: ""
             profilePhotoUri = user.fotoPerfil?.let { Uri.parse(it) }
         }
     }
@@ -290,7 +292,21 @@ fun PerfilUsuarioScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = rut,
+                        onValueChange = { /* No permitir editar el RUT manualmente */ },
+                        label = { Text("RUT") },
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Default.CreditCard, contentDescription = null) },
+                        enabled = false, // Se mantiene deshabilitado por seguridad
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    )
 
+                    Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = pnombre,
                         onValueChange = { pnombre = it },

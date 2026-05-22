@@ -49,9 +49,9 @@ object RetrofitClient {
 
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
-        .connectTimeout(180, TimeUnit.SECONDS)
-        .readTimeout(180, TimeUnit.SECONDS)
-        .writeTimeout(180, TimeUnit.SECONDS)
+        .connectTimeout(360, TimeUnit.SECONDS)
+        .readTimeout(360, TimeUnit.SECONDS)
+        .writeTimeout(360, TimeUnit.SECONDS)
         .build()
 
     // ==================== DESERIALIZADOR DE FECHAS ====================

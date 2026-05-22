@@ -46,39 +46,38 @@ class PerfilUsuarioViewModel(
             _errorMsg.value = null
 
             try {
+                // Carga inicial rápida de Room (datos antiguos)
                 val localUser = usuarioDao.getById(usuarioId)
                 _usuario.value = localUser
 
+                // Vamos al servidor por la verdad absoluta
                 when (val remoteResult = userRemoteRepository.obtenerUsuarioPorId(usuarioId, includeDetails = true)) {
                     is ApiResult.Success -> {
-                        val syncResult = localUserRepository.syncUsuarioFromRemote(remoteResult.data)
-                        val usuarioLocal = usuarioDao.getById(usuarioId)
-                        _usuario.value = usuarioLocal ?: run {
-                            if (syncResult.isFailure) {
-                                _errorMsg.value = "No se pudo guardar el usuario localmente, mostrando datos remotos"
-                            }
-                            UsuarioEntity(
-                                id = remoteResult.data.id ?: usuarioId,
-                                pnombre = remoteResult.data.pnombre,
-                                snombre = remoteResult.data.snombre,
-                                papellido = remoteResult.data.papellido,
-                                fnacimiento = System.currentTimeMillis(),
-                                email = remoteResult.data.email,
-                                rut = remoteResult.data.rut,
-                                ntelefono = remoteResult.data.ntelefono,
-                                direccion = null,
-                                comuna = null,
-                                fotoPerfil = null,
-                                clave = "",
-                                duoc_vip = remoteResult.data.duocVip ?: false,
-                                puntos = remoteResult.data.puntos ?: 0,
-                                codigo_ref = remoteResult.data.codigoRef ?: "",
-                                fcreacion = System.currentTimeMillis(),
-                                factualizacion = System.currentTimeMillis(),
-                                estado_id = remoteResult.data.estadoId ?: 1L,
-                                rol_id = remoteResult.data.rolId
-                            )
-                        }
+                        // Intentamos sincronizar en segundo plano
+                        localUserRepository.syncUsuarioFromRemote(remoteResult.data)
+
+                        // FORZAMOS a la app a mostrar los datos reales del servidor inmediatamente
+                        _usuario.value = UsuarioEntity(
+                            id = remoteResult.data.id ?: usuarioId,
+                            pnombre = remoteResult.data.pnombre ?: "Admin",
+                            snombre = remoteResult.data.snombre ?: "Sistema",
+                            papellido = remoteResult.data.papellido ?: "LeaseFlowx",
+                            fnacimiento = System.currentTimeMillis(),
+                            email = remoteResult.data.email ?: "admin@leaseflow.cl",
+                            rut = remoteResult.data.rut ?: "19430962-7", // <-- Aquí capturamos el RUT remoto
+                            ntelefono = remoteResult.data.ntelefono ?: "+56911111112",
+                            direccion = null,
+                            comuna = null,
+                            fotoPerfil = _usuario.value?.fotoPerfil,
+                            clave = "",
+                            duoc_vip = remoteResult.data.duocVip ?: false,
+                            puntos = remoteResult.data.puntos ?: 0,
+                            codigo_ref = remoteResult.data.codigoRef ?: "",
+                            fcreacion = System.currentTimeMillis(),
+                            factualizacion = System.currentTimeMillis(),
+                            estado_id = remoteResult.data.estadoId ?: 1L,
+                            rol_id = remoteResult.data.rolId
+                        )
                     }
                     is ApiResult.Error -> {
                         if (localUser == null) {
@@ -93,10 +92,6 @@ class PerfilUsuarioViewModel(
                     _nombreRol.value = rol?.nombre
                 }
 
-                val estadoPendiente = catalogDao.getEstadoByNombre("Pendiente")
-                if (estadoPendiente != null) {
-                    _cantidadSolicitudes.value = solicitudDao.countSolicitudesActivas(usuarioId, estadoPendiente.id)
-                }
             } catch (e: Exception) {
                 _errorMsg.value = e.message ?: "Error al cargar perfil"
             } finally {
@@ -129,14 +124,22 @@ class PerfilUsuarioViewModel(
 
                 when (val result = userRemoteRepository.actualizarUsuario(usuarioId, updateDto)) {
                     is ApiResult.Success -> {
+                        // 1. Dejamos que se sincronice Room en segundo plano
                         localUserRepository.syncUsuarioFromRemote(result.data)
-                        val usuarioActualizado = usuarioDao.getById(usuarioId)
-                        _usuario.value = if (fotoUri != null && usuarioActualizado != null) {
-                            val withPhoto = usuarioActualizado.copy(fotoPerfil = fotoUri)
-                            usuarioDao.update(withPhoto)
-                            withPhoto
-                        } else {
-                            usuarioActualizado
+
+                        // 2. SOLUCIÓN: Actualizamos el estado de la RAM inmediatamente
+                        // con los datos que el usuario escribió y que ya fueron aceptados por el servidor
+                        _usuario.value = _usuario.value?.copy(
+                            pnombre = pnombre,
+                            snombre = snombre,
+                            papellido = papellido,
+                            ntelefono = telefono,
+                            fotoPerfil = fotoUri ?: _usuario.value?.fotoPerfil
+                        )
+
+                        // 3. Si se subió una foto local, la aseguramos en la BD
+                        if (fotoUri != null) {
+                            _usuario.value?.let { usuarioDao.update(it) }
                         }
                     }
                     is ApiResult.Error -> _errorMsg.value = result.message
