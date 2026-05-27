@@ -22,7 +22,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class RentifyAuthViewModelTest {
+class LeaseFlowAuthViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
 

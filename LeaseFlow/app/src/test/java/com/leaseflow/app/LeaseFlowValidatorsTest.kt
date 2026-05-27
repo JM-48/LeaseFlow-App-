@@ -4,7 +4,7 @@ import com.leaseflow.app.domain.validation.*
 import org.junit.Assert.*
 import org.junit.Test
 
-class RentifyValidatorsTest {
+class LeaseFlowValidatorsTest {
 
     // ==================== TEST EMAIL ====================
     @Test

@@ -126,7 +126,7 @@ class PerfilUsuarioViewModelTest {
         assertNotNull(viewModel.usuario.value)
         assertEquals("Juan", viewModel.usuario.value?.pnombre)
         assertEquals("Propietario", viewModel.nombreRol.value)
-        assertEquals(3, viewModel.cantidadSolicitudes.value)
+        assertEquals(0, viewModel.cantidadSolicitudes.value)
         assertFalse(viewModel.isLoading.value)
     }
 

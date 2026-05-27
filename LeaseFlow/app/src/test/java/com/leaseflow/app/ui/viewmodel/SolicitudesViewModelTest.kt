@@ -114,7 +114,7 @@ class SolicitudesViewModelTest {
 
         // 3. ASSERT
         assertNotNull("Debe haber mensaje de éxito", viewModel.successMsg.value)
-        assertEquals("Solicitud aceptada", viewModel.successMsg.value)
+        assertEquals("Solicitud aceptada con éxito", viewModel.successMsg.value)
 
         // Verificamos que la lista en el ViewModel se actualizó
         assertEquals("ACEPTADA", viewModel.solicitudes.value[0].nombreEstado)

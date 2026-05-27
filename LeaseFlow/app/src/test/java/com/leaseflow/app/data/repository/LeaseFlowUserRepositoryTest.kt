@@ -17,7 +17,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class RentifyUserRepositoryTest {
+class LeaseFlowUserRepositoryTest {
 
     @Mock
     private lateinit var usuarioDao: UsuarioDao
