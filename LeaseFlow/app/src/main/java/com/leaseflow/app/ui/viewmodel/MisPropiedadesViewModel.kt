@@ -3,21 +3,21 @@ package com.leaseflow.app.ui.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.leaseflow.app.data.local.dao.PropiedadDao
 import com.leaseflow.app.data.local.dao.CatalogDao
+import com.leaseflow.app.data.local.dao.PropiedadDao
 import com.leaseflow.app.data.local.entities.PropiedadEntity
+import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.PropertyRemoteDTO
 import com.leaseflow.app.data.repository.ApplicationRemoteRepository
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-/**
- * Data class para propiedad con info adicional
- */
 data class PropiedadConInfo(
     val propiedad: PropiedadEntity,
     val nombreComuna: String?,
@@ -26,29 +26,24 @@ data class PropiedadConInfo(
     val estadoArriendo: String? = null
 )
 
-/**
- * ViewModel para ver propiedades del propietario
- */
 class MisPropiedadesViewModel(
     private val propiedadDao: PropiedadDao,
     private val catalogDao: CatalogDao,
     private val propertyRepository: PropertyRemoteRepository,
-    private val applicationRepository: ApplicationRemoteRepository
+    private val applicationRepository: ApplicationRemoteRepository,
+    private val userPreferences: Flow<UserPreferences>
 ) : ViewModel() {
 
     companion object {
         private const val TAG = "MisPropiedadesVM"
     }
 
-    // Lista de propiedades
     private val _propiedades = MutableStateFlow<List<PropiedadConInfo>>(emptyList())
     val propiedades: StateFlow<List<PropiedadConInfo>> = _propiedades.asStateFlow()
 
-    // Propiedades remotas
     private val _propiedadesRemotas = MutableStateFlow<List<PropertyRemoteDTO>>(emptyList())
     val propiedadesRemotas: StateFlow<List<PropertyRemoteDTO>> = _propiedadesRemotas.asStateFlow()
 
-    // Estados de carga
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -58,18 +53,21 @@ class MisPropiedadesViewModel(
     private val _successMsg = MutableStateFlow<String?>(null)
     val successMsg: StateFlow<String?> = _successMsg.asStateFlow()
 
-    /**
-     * Cargar propiedades del propietario
-     */
+    // listarPropiedadesPorUsuario es endpoint protegido
     fun cargarPropiedadesPropietario(propietarioId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMsg.value = null
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
 
             try {
                 Log.d(TAG, "Cargando propiedades del propietario: $propietarioId")
 
                 when (val result = propertyRepository.listarPropiedadesPorUsuario(
+                    userId = userId,
+                    roleId = roleId,
                     usuarioId = propietarioId,
                     includeDetails = true
                 )) {
@@ -88,30 +86,24 @@ class MisPropiedadesViewModel(
                                         }
                                         estadoPorPropiedadId[propId] = if (arrendada) "Arrendada" else "Disponible"
                                     }
-                                    else -> {
-                                        estadoPorPropiedadId[propId] = null
-                                    }
+                                    else -> estadoPorPropiedadId[propId] = null
                                 }
                             }
                         }
 
-                        val propiedadesConInfo = result.data.map { dto ->
-                            val estadoArriendo = dto.id?.let { estadoPorPropiedadId[it] }
+                        _propiedades.value = result.data.map { dto ->
                             PropiedadConInfo(
                                 propiedad = mapRemoteToLocal(dto),
                                 nombreComuna = dto.comuna?.nombre,
                                 nombreTipo = dto.tipo?.nombre,
                                 propiedadRemota = dto,
-                                estadoArriendo = estadoArriendo
+                                estadoArriendo = dto.id?.let { estadoPorPropiedadId[it] }
                             )
                         }
-
-                        _propiedades.value = propiedadesConInfo
                     }
                     is ApiResult.Error -> {
                         Log.e(TAG, "Error al cargar propiedades: ${result.message}")
                         _errorMsg.value = result.message
-                        // Fallback a BD local
                         cargarPropiedadesLocales(propietarioId)
                     }
                     is ApiResult.Loading -> {}
@@ -126,41 +118,32 @@ class MisPropiedadesViewModel(
         }
     }
 
-    /**
-     * Cargar propiedades desde BD local (fallback)
-     */
     private suspend fun cargarPropiedadesLocales(propietarioId: Long) {
         Log.d(TAG, "Cargando propiedades locales del propietario: $propietarioId")
-
         val propiedadesLocales = propiedadDao.getPropiedadesByPropietario(propietarioId)
-
-        val propiedadesConInfo = propiedadesLocales.map { propiedad ->
+        _propiedades.value = propiedadesLocales.map { propiedad ->
             PropiedadConInfo(
                 propiedad = propiedad,
                 nombreComuna = catalogDao.getComunaById(propiedad.comuna_id)?.nombre,
                 nombreTipo = catalogDao.getTipoById(propiedad.tipo_id)?.nombre
             )
         }
-
-        _propiedades.value = propiedadesConInfo
     }
 
-    /**
-     * Eliminar propiedad
-     */
     fun eliminarPropiedad(propiedadId: Long, propietarioId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMsg.value = null
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
 
             try {
                 Log.d(TAG, "Eliminando propiedad: $propiedadId")
-
-                when (val result = propertyRepository.eliminarPropiedad(propiedadId)) {
+                when (val result = propertyRepository.eliminarPropiedad(userId, roleId, propiedadId)) {
                     is ApiResult.Success -> {
                         Log.d(TAG, "Propiedad eliminada exitosamente")
                         _successMsg.value = "Propiedad eliminada"
-                        // Recargar lista
                         cargarPropiedadesPropietario(propietarioId)
                     }
                     is ApiResult.Error -> {
@@ -178,17 +161,11 @@ class MisPropiedadesViewModel(
         }
     }
 
-    /**
-     * Limpiar mensajes
-     */
     fun limpiarMensajes() {
         _errorMsg.value = null
         _successMsg.value = null
     }
 
-    /**
-     * Mapear DTO remoto a entidad local
-     */
     private fun mapRemoteToLocal(dto: PropertyRemoteDTO): PropiedadEntity {
         return PropiedadEntity(
             id = dto.id ?: 0L,

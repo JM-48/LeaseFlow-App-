@@ -2,19 +2,19 @@ package com.leaseflow.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.repository.ContactRemoteRepository
+import kotlinx.coroutines.flow.Flow
 
-/**
- * Factory para crear ContactViewModel con dependencias
- */
 class ContactViewModelFactory(
-    private val contactRepository: ContactRemoteRepository
+    private val contactRepository: ContactRemoteRepository,
+    private val userPreferences: Flow<UserPreferences>
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ContactViewModel::class.java)) {
-            return ContactViewModel(contactRepository) as T
+            return ContactViewModel(contactRepository, userPreferences) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

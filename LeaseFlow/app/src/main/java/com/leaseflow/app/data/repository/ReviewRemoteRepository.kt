@@ -7,8 +7,11 @@ import com.leaseflow.app.data.remote.dto.TipoResenaDTO
 import com.leaseflow.app.data.remote.safeApiCall
 
 /**
- * ✅ REPOSITORIO PARA REVIEW SERVICE
- * Maneja todas las operaciones relacionadas con reseñas y valoraciones
+ * Repositorio para comunicacion con Review Service (Puerto 8086).
+ *
+ * CAMBIO: Metodos protegidos reciben (userId: Long, roleId: Int) y los
+ * propagan como headers X-Usuario-Id / X-Rol-Id.
+ * Metodos de solo lectura publica no los necesitan.
  */
 class ReviewRemoteRepository {
 
@@ -16,10 +19,9 @@ class ReviewRemoteRepository {
 
     // ==================== RESEÑAS ====================
 
-    /**
-     * Crear una nueva reseña
-     */
     suspend fun crearResena(
+        userId: Long,
+        roleId: Int,
         usuarioId: Long,
         propiedadId: Long?,
         usuarioResenadoId: Long?,
@@ -35,166 +37,108 @@ class ReviewRemoteRepository {
             comentario = comentario,
             tipoResenaId = tipoResenaId
         )
-
-        return safeApiCall { api.crearResena(resenaDTO) }
+        return safeApiCall { api.crearResena(userId, roleId, resenaDTO) }
     }
 
     /**
-     * Obtener todas las reseñas
+     * Listar todas las reseñas — publico.
      */
-    suspend fun listarTodasResenas(
-        includeDetails: Boolean = false
-    ): ApiResult<List<ResenaDTO>> {
-        return safeApiCall {
-            api.listarTodasResenas(includeDetails)
-        }
+    suspend fun listarTodasResenas(includeDetails: Boolean = false): ApiResult<List<ResenaDTO>> {
+        return safeApiCall { api.listarTodasResenas(includeDetails) }
     }
 
     /**
-     * Obtener reseña por ID
+     * Obtener reseña por ID — publico.
      */
-    suspend fun obtenerResenaPorId(
-        resenaId: Long,
-        includeDetails: Boolean = true
-    ): ApiResult<ResenaDTO> {
-        return safeApiCall {
-            api.obtenerResenaPorId(resenaId, includeDetails)
-        }
+    suspend fun obtenerResenaPorId(resenaId: Long, includeDetails: Boolean = true): ApiResult<ResenaDTO> {
+        return safeApiCall { api.obtenerResenaPorId(resenaId, includeDetails) }
     }
 
     /**
-     * Obtener reseñas creadas por un usuario
+     * Obtener reseñas creadas por un usuario — requiere identidad (lectura propia).
      */
     suspend fun obtenerResenasPorUsuario(
-        usuarioId: Long,
+        userId: Long,
+        roleId: Int,
+        targetUsuarioId: Long,
         includeDetails: Boolean = false
     ): ApiResult<List<ResenaDTO>> {
         return safeApiCall {
-            api.obtenerResenasPorUsuario(usuarioId, includeDetails)
+            api.obtenerResenasPorUsuario(targetUsuarioId, userId, roleId, includeDetails)
         }
     }
 
     /**
-     * Obtener reseñas de una propiedad
+     * Obtener reseñas de una propiedad — publico.
      */
     suspend fun obtenerResenasPorPropiedad(
         propiedadId: Long,
         includeDetails: Boolean = true
     ): ApiResult<List<ResenaDTO>> {
-        return safeApiCall {
-            api.obtenerResenasPorPropiedad(propiedadId, includeDetails)
-        }
+        return safeApiCall { api.obtenerResenasPorPropiedad(propiedadId, includeDetails) }
     }
 
     /**
-     * Obtener reseñas escritas sobre un usuario
+     * Obtener reseñas sobre un usuario — publico.
      */
     suspend fun obtenerResenasSobreUsuario(
         usuarioResenadoId: Long,
         includeDetails: Boolean = true
     ): ApiResult<List<ResenaDTO>> {
-        return safeApiCall {
-            api.obtenerResenasSobreUsuario(usuarioResenadoId, includeDetails)
-        }
+        return safeApiCall { api.obtenerResenasSobreUsuario(usuarioResenadoId, includeDetails) }
     }
 
     /**
-     * Calcular promedio de calificación de una propiedad
+     * Calcular promedio propiedad — publico.
      */
-    suspend fun calcularPromedioPorPropiedad(
-        propiedadId: Long
-    ): ApiResult<Double> {
-        return safeApiCall {
-            api.calcularPromedioPorPropiedad(propiedadId)
-        }
+    suspend fun calcularPromedioPorPropiedad(propiedadId: Long): ApiResult<Double> {
+        return safeApiCall { api.calcularPromedioPorPropiedad(propiedadId) }
     }
 
     /**
-     * Calcular promedio de calificación de un usuario
+     * Calcular promedio usuario — publico.
      */
-    suspend fun calcularPromedioPorUsuario(
-        usuarioResenadoId: Long
-    ): ApiResult<Double> {
-        return safeApiCall {
-            api.calcularPromedioPorUsuario(usuarioResenadoId)
-        }
+    suspend fun calcularPromedioPorUsuario(usuarioResenadoId: Long): ApiResult<Double> {
+        return safeApiCall { api.calcularPromedioPorUsuario(usuarioResenadoId) }
     }
 
-    /**
-     * Actualizar estado de una reseña (ACTIVA, BANEADA, OCULTA)
-     */
     suspend fun actualizarEstadoResena(
+        userId: Long,
+        roleId: Int,
         resenaId: Long,
         nuevoEstado: String
     ): ApiResult<ResenaDTO> {
-        return safeApiCall {
-            api.actualizarEstadoResena(resenaId, nuevoEstado)
-        }
+        return safeApiCall { api.actualizarEstadoResena(resenaId, userId, roleId, nuevoEstado) }
     }
 
-    /**
-     * Eliminar una reseña
-     */
     suspend fun eliminarResena(
+        userId: Long,
+        roleId: Int,
         resenaId: Long
     ): ApiResult<Void> {
-        return safeApiCall {
-            api.eliminarResena(resenaId)
-        }
+        return safeApiCall { api.eliminarResena(resenaId, userId, roleId) }
     }
 
     // ==================== TIPOS DE RESEÑA ====================
 
-    /**
-     * Obtener todos los tipos de reseña disponibles
-     */
-    suspend fun listarTiposResena(): ApiResult<List<TipoResenaDTO>> {
-        return safeApiCall {
-            api.listarTiposResena()
-        }
-    }
+    suspend fun listarTiposResena(): ApiResult<List<TipoResenaDTO>> =
+        safeApiCall { api.listarTiposResena() }
 
-    /**
-     * Obtener tipo de reseña por ID
-     */
-    suspend fun obtenerTipoResenaPorId(
-        tipoResenaId: Long
-    ): ApiResult<TipoResenaDTO> {
-        return safeApiCall {
-            api.obtenerTipoResenaPorId(tipoResenaId)
-        }
-    }
+    suspend fun obtenerTipoResenaPorId(tipoResenaId: Long): ApiResult<TipoResenaDTO> =
+        safeApiCall { api.obtenerTipoResenaPorId(tipoResenaId) }
 
     // ==================== HELPERS ====================
 
-    /**
-     * Verificar si un usuario puede reseñar una propiedad
-     * (no ha creado una reseña previa para esa propiedad)
-     */
-    suspend fun puedeResenarPropiedad(
-        usuarioId: Long,
-        propiedadId: Long
-    ): Boolean {
-        return when (val result = obtenerResenasPorUsuario(usuarioId)) {
-            is ApiResult.Success -> {
-                // Verificar si ya existe una reseña para esta propiedad
-                !result.data.any { it.propiedadId == propiedadId }
-            }
-            else -> true // En caso de error, permitir intentar
+    suspend fun puedeResenarPropiedad(userId: Long, roleId: Int, targetUsuarioId: Long, propiedadId: Long): Boolean {
+        return when (val result = obtenerResenasPorUsuario(userId, roleId, targetUsuarioId)) {
+            is ApiResult.Success -> !result.data.any { it.propiedadId == propiedadId }
+            else -> true
         }
     }
 
-    /**
-     * Obtener reseñas activas de una propiedad
-     */
-    suspend fun obtenerResenasActivasPorPropiedad(
-        propiedadId: Long
-    ): ApiResult<List<ResenaDTO>> {
+    suspend fun obtenerResenasActivasPorPropiedad(propiedadId: Long): ApiResult<List<ResenaDTO>> {
         return when (val result = obtenerResenasPorPropiedad(propiedadId, true)) {
-            is ApiResult.Success -> {
-                val resenasActivas = result.data.filter { it.estado == "ACTIVA" }
-                ApiResult.Success(resenasActivas)
-            }
+            is ApiResult.Success -> ApiResult.Success(result.data.filter { it.estado == "ACTIVA" })
             is ApiResult.Error -> result
             else -> ApiResult.Error("Error desconocido")
         }

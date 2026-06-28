@@ -5,15 +5,18 @@ import androidx.lifecycle.ViewModelProvider
 import com.leaseflow.app.data.local.dao.UsuarioDao
 import com.leaseflow.app.data.local.dao.CatalogDao
 import com.leaseflow.app.data.local.dao.SolicitudDao
+import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.repository.LeaseFlowUserRepository
 import com.leaseflow.app.data.repository.UserRemoteRepository
+import kotlinx.coroutines.flow.Flow
 
 class PerfilUsuarioViewModelFactory(
     private val usuarioDao: UsuarioDao,
     private val catalogDao: CatalogDao,
     private val solicitudDao: SolicitudDao,
     private val userRemoteRepository: UserRemoteRepository,
-    private val localUserRepository: LeaseFlowUserRepository
+    private val localUserRepository: LeaseFlowUserRepository,
+    private val userPreferences: Flow<UserPreferences>
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -24,7 +27,8 @@ class PerfilUsuarioViewModelFactory(
                 catalogDao = catalogDao,
                 solicitudDao = solicitudDao,
                 userRemoteRepository = userRemoteRepository,
-                localUserRepository = localUserRepository
+                localUserRepository = localUserRepository,
+                userPreferences = userPreferences
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

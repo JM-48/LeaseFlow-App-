@@ -7,10 +7,6 @@ import com.leaseflow.app.data.remote.dto.UsuarioRemoteDTO
 import com.leaseflow.app.data.remote.dto.UsuarioUpdateRemoteDTO
 import com.leaseflow.app.data.remote.safeApiCall
 
-/**
- * Repositorio para gestionar las operaciones de datos de los usuarios.
- * Usa solo el API remoto (sin DAO local)
- */
 class UserRepository(private val api: UserServiceApi) {
 
     private fun UsuarioRemoteDTO.toUsuarioDTO(): UsuarioDTO {
@@ -30,7 +26,6 @@ class UserRepository(private val api: UserServiceApi) {
     }
 
     private fun UsuarioDTO.toUsuarioUpdateRemoteDTO(): UsuarioUpdateRemoteDTO {
-        // CORRECCIÓN AQUÍ: Agregamos '?: ""' para evitar enviar nulos
         return UsuarioUpdateRemoteDTO(
             pnombre = this.pnombre ?: "",
             snombre = this.snombre ?: "",
@@ -42,38 +37,69 @@ class UserRepository(private val api: UserServiceApi) {
         )
     }
 
-    suspend fun getUsers(): ApiResult<List<UsuarioDTO>> {
-        return when (val result = safeApiCall { api.obtenerTodosUsuarios(includeDetails = true) }) {
+    suspend fun getUsers(userId: Long, roleId: Int): ApiResult<List<UsuarioDTO>> {
+        return when (val result = safeApiCall {
+            api.obtenerTodosUsuarios(
+                usuarioId = userId.toString(),
+                rolId = roleId.toString(),
+                includeDetails = true
+            )
+        }) {
             is ApiResult.Success -> ApiResult.Success(result.data.map { it.toUsuarioDTO() })
             is ApiResult.Error -> result
             else -> ApiResult.Loading
         }
     }
 
-    suspend fun getUserById(userId: Long): ApiResult<UsuarioDTO> {
-        return when (val result = safeApiCall { api.obtenerUsuarioPorId(userId, includeDetails = true) }) {
+    suspend fun getUserById(userId: Long, roleId: Int, targetUserId: Long): ApiResult<UsuarioDTO> {
+        return when (val result = safeApiCall {
+            api.obtenerUsuarioPorId(
+                id = targetUserId,
+                usuarioId = userId.toString(),
+                rolId = roleId.toString(),
+                includeDetails = true
+            )
+        }) {
             is ApiResult.Success -> ApiResult.Success(result.data.toUsuarioDTO())
             is ApiResult.Error -> result
             else -> ApiResult.Loading
         }
     }
 
-    suspend fun updateUser(userId: Long, user: UsuarioDTO): ApiResult<UsuarioDTO> {
+    suspend fun updateUser(userId: Long, roleId: Int, targetUserId: Long, user: UsuarioDTO): ApiResult<UsuarioDTO> {
         val updateDTO = user.toUsuarioUpdateRemoteDTO()
-        return when (val result = safeApiCall { api.actualizarUsuario(userId, updateDTO) }) {
+        return when (val result = safeApiCall {
+            api.actualizarUsuario(
+                id = targetUserId,
+                usuario = updateDTO,
+                usuarioId = userId.toString(),
+                rolId = roleId.toString()
+            )
+        }) {
             is ApiResult.Success -> ApiResult.Success(result.data.toUsuarioDTO())
             is ApiResult.Error -> result
             else -> ApiResult.Loading
         }
     }
 
-    suspend fun deleteUser(userId: Long): ApiResult<Unit> {
+    suspend fun deleteUser(userId: Long, roleId: Int, targetUserId: Long): ApiResult<Unit> {
         return try {
-            val response = api.eliminarUsuario(userId)
+            val response = api.eliminarUsuario(
+                id = targetUserId,
+                usuarioId = userId.toString(),
+                rolId = roleId.toString()
+            )
             if (response.isSuccessful) {
                 ApiResult.Success(Unit)
             } else {
-                val fallback = safeApiCall { api.cambiarEstado(userId, estadoId = 2) }
+                val fallback = safeApiCall {
+                    api.cambiarEstado(
+                        id = targetUserId,
+                        estadoId = 2,
+                        usuarioId = userId.toString(),
+                        rolId = roleId.toString()
+                    )
+                }
                 when (fallback) {
                     is ApiResult.Success -> ApiResult.Success(Unit)
                     is ApiResult.Error -> fallback
@@ -81,7 +107,14 @@ class UserRepository(private val api: UserServiceApi) {
                 }
             }
         } catch (e: Exception) {
-            when (val fallback = safeApiCall { api.cambiarEstado(userId, estadoId = 2) }) {
+            when (val fallback = safeApiCall {
+                api.cambiarEstado(
+                    id = targetUserId,
+                    estadoId = 2,
+                    usuarioId = userId.toString(),
+                    rolId = roleId.toString()
+                )
+            }) {
                 is ApiResult.Success -> ApiResult.Success(Unit)
                 is ApiResult.Error -> fallback
                 is ApiResult.Loading -> ApiResult.Error(e.message ?: "Error de conexion")

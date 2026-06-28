@@ -7,8 +7,11 @@ import com.leaseflow.app.data.remote.dto.RespuestaMensajeDTO
 import com.leaseflow.app.data.remote.safeApiCall
 
 /**
- * ✅ REPOSITORIO PARA CONTACT SERVICE
- * Maneja todas las operaciones relacionadas con mensajes de contacto
+ * Repositorio para comunicacion con Contact Service (Puerto 8085).
+ *
+ * CAMBIO: Todos los metodos protegidos reciben (userId: Long, roleId: Int)
+ * y los propagan como headers X-Usuario-Id / X-Rol-Id.
+ * crearMensaje es publico — no requiere headers de identidad.
  */
 class ContactRemoteRepository {
 
@@ -17,7 +20,7 @@ class ContactRemoteRepository {
     // ==================== MENSAJES ====================
 
     /**
-     * Crear un nuevo mensaje de contacto
+     * Crear mensaje de contacto — publico, sin headers de identidad.
      */
     suspend fun crearMensaje(
         nombre: String,
@@ -35,102 +38,77 @@ class ContactRemoteRepository {
             numeroTelefono = numeroTelefono,
             usuarioId = usuarioId
         )
-
         return safeApiCall { api.crearMensaje(mensajeDTO) }
     }
 
-    /**
-     * Listar todos los mensajes
-     */
     suspend fun listarTodosMensajes(
+        userId: Long,
+        roleId: Int,
         includeDetails: Boolean = false
     ): ApiResult<List<MensajeContactoDTO>> {
-        return safeApiCall {
-            api.listarTodosMensajes(includeDetails)
-        }
+        return safeApiCall { api.listarTodosMensajes(userId, roleId, includeDetails) }
     }
 
-    /**
-     * Obtener mensaje por ID
-     */
     suspend fun obtenerMensajePorId(
+        userId: Long,
+        roleId: Int,
         mensajeId: Long,
         includeDetails: Boolean = true
     ): ApiResult<MensajeContactoDTO> {
-        return safeApiCall {
-            api.obtenerMensajePorId(mensajeId, includeDetails)
-        }
+        return safeApiCall { api.obtenerMensajePorId(mensajeId, userId, roleId, includeDetails) }
     }
 
-    /**
-     * Listar mensajes por email
-     */
     suspend fun listarMensajesPorEmail(
+        userId: Long,
+        roleId: Int,
         email: String
     ): ApiResult<List<MensajeContactoDTO>> {
-        return safeApiCall {
-            api.listarMensajesPorEmail(email)
-        }
+        return safeApiCall { api.listarMensajesPorEmail(email, userId, roleId) }
     }
 
-    /**
-     * Listar mensajes por usuario autenticado
-     */
     suspend fun listarMensajesPorUsuario(
-        usuarioId: Long
+        userId: Long,
+        roleId: Int,
+        targetUsuarioId: Long
     ): ApiResult<List<MensajeContactoDTO>> {
-        return safeApiCall {
-            api.listarMensajesPorUsuario(usuarioId)
-        }
+        return safeApiCall { api.listarMensajesPorUsuario(targetUsuarioId, userId, roleId) }
     }
 
-    /**
-     * Listar mensajes por estado
-     */
     suspend fun listarMensajesPorEstado(
+        userId: Long,
+        roleId: Int,
         estado: String
     ): ApiResult<List<MensajeContactoDTO>> {
-        return safeApiCall {
-            api.listarMensajesPorEstado(estado)
-        }
+        return safeApiCall { api.listarMensajesPorEstado(estado, userId, roleId) }
     }
 
-    /**
-     * Listar mensajes pendientes sin responder
-     */
-    suspend fun listarMensajesSinResponder(): ApiResult<List<MensajeContactoDTO>> {
-        return safeApiCall {
-            api.listarMensajesSinResponder()
-        }
+    suspend fun listarMensajesSinResponder(
+        userId: Long,
+        roleId: Int
+    ): ApiResult<List<MensajeContactoDTO>> {
+        return safeApiCall { api.listarMensajesSinResponder(userId, roleId) }
     }
 
-    /**
-     * Buscar mensajes por palabra clave
-     */
     suspend fun buscarMensajes(
+        userId: Long,
+        roleId: Int,
         keyword: String
     ): ApiResult<List<MensajeContactoDTO>> {
-        return safeApiCall {
-            api.buscarMensajesPorPalabraClave(keyword)
-        }
+        return safeApiCall { api.buscarMensajesPorPalabraClave(keyword, userId, roleId) }
     }
 
-    /**
-     * Actualizar estado de mensaje
-     */
     suspend fun actualizarEstado(
+        userId: Long,
+        roleId: Int,
         mensajeId: Long,
         nuevoEstado: String
     ): ApiResult<MensajeContactoDTO> {
-        return safeApiCall {
-            api.actualizarEstadoMensaje(mensajeId, nuevoEstado)
-        }
+        return safeApiCall { api.actualizarEstadoMensaje(mensajeId, userId, roleId, nuevoEstado) }
     }
 
-    /**
-     * Responder mensaje (solo admin)
-     */
     suspend fun responderMensaje(
+        userId: Long,
+        roleId: Int,
         mensajeId: Long,
         respuesta: String,
         respondidoPor: Long,
@@ -141,64 +119,42 @@ class ContactRemoteRepository {
             respondidoPor = respondidoPor,
             nuevoEstado = nuevoEstado
         )
-
-        return safeApiCall {
-            api.responderMensaje(mensajeId, respuestaDTO)
-        }
+        return safeApiCall { api.responderMensaje(mensajeId, userId, roleId, respuestaDTO) }
     }
 
-    /**
-     * Eliminar mensaje (solo admin)
-     */
     suspend fun eliminarMensaje(
+        userId: Long,
+        roleId: Int,
         mensajeId: Long,
         adminId: Long
     ): ApiResult<Void> {
-        return safeApiCall {
-            api.eliminarMensaje(mensajeId, adminId)
-        }
+        return safeApiCall { api.eliminarMensaje(mensajeId, userId, roleId, adminId) }
     }
 
-    /**
-     * Obtener estadísticas de mensajes
-     */
-    suspend fun obtenerEstadisticas(): ApiResult<Map<String, Long>> {
-        return safeApiCall {
-            api.obtenerEstadisticas()
-        }
+    suspend fun obtenerEstadisticas(
+        userId: Long,
+        roleId: Int
+    ): ApiResult<Map<String, Long>> {
+        return safeApiCall { api.obtenerEstadisticas(userId, roleId) }
     }
 
     // ==================== HELPERS ====================
 
-    /**
-     * Verificar si un usuario puede enviar más mensajes
-     */
-    suspend fun puedeEnviarMensaje(usuarioId: Long): Boolean {
-        return when (val result = listarMensajesPorUsuario(usuarioId)) {
-            is ApiResult.Success -> {
-                val pendientes = result.data.count { it.estado == "PENDIENTE" }
-                pendientes < 5 // Límite de 5 mensajes pendientes
-            }
-            else -> true // En caso de error, permitir
+    suspend fun puedeEnviarMensaje(userId: Long, roleId: Int, targetUsuarioId: Long): Boolean {
+        return when (val result = listarMensajesPorUsuario(userId, roleId, targetUsuarioId)) {
+            is ApiResult.Success -> result.data.count { it.estado == "PENDIENTE" } < 5
+            else -> true
         }
     }
 
-    /**
-     * Obtener cantidad de mensajes pendientes por usuario
-     */
-    suspend fun contarMensajesPendientes(usuarioId: Long): Int {
-        return when (val result = listarMensajesPorUsuario(usuarioId)) {
-            is ApiResult.Success -> {
-                result.data.count { it.estado == "PENDIENTE" }
-            }
+    suspend fun contarMensajesPendientes(userId: Long, roleId: Int, targetUsuarioId: Long): Int {
+        return when (val result = listarMensajesPorUsuario(userId, roleId, targetUsuarioId)) {
+            is ApiResult.Success -> result.data.count { it.estado == "PENDIENTE" }
             else -> 0
         }
     }
 
-    /**
-     * Obtener mensajes sin responder (para admins)
-     */
-    suspend fun obtenerMensajesPendientesAdmin(): ApiResult<List<MensajeContactoDTO>> {
-        return listarMensajesSinResponder()
+    suspend fun obtenerMensajesPendientesAdmin(userId: Long, roleId: Int): ApiResult<List<MensajeContactoDTO>> {
+        return listarMensajesSinResponder(userId, roleId)
     }
 }

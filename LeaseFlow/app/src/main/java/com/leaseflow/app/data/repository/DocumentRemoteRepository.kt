@@ -11,6 +11,10 @@ import com.leaseflow.app.data.remote.safeApiCall
 
 /**
  * Repositorio para comunicacion con Document Service (Puerto 8083).
+ *
+ * CAMBIO: Todos los metodos protegidos reciben (userId: Long, roleId: Int)
+ * y los propagan como headers X-Usuario-Id / X-Rol-Id.
+ * listarEstados y listarTiposDocumentos son publicos — no los necesitan.
  */
 class DocumentRemoteRepository {
 
@@ -19,13 +23,11 @@ class DocumentRemoteRepository {
     companion object {
         private const val TAG = "DocumentRemoteRepo"
 
-        // IDs de estados
         const val ESTADO_PENDIENTE = 1L
         const val ESTADO_ACEPTADO = 2L
         const val ESTADO_RECHAZADO = 3L
         const val ESTADO_EN_REVISION = 4L
 
-        // IDs de tipos de documento
         const val TIPO_DNI = 1L
         const val TIPO_PASAPORTE = 2L
         const val TIPO_LIQUIDACION_SUELDO = 3L
@@ -36,16 +38,15 @@ class DocumentRemoteRepository {
 
     // ==================== DOCUMENTOS ====================
 
-    /**
-     * Crea un nuevo documento
-     */
     suspend fun crearDocumento(
+        userId: Long,
+        roleId: Int,
         nombre: String,
         usuarioId: Long,
         tipoDocId: Long,
         estadoId: Long = ESTADO_PENDIENTE
     ): ApiResult<DocumentoRemoteDTO> {
-        Log.d(TAG, "Creando documento: $nombre para usuario $usuarioId, tipo $tipoDocId")
+        Log.d(TAG, "Creando documento: $nombre para usuario $usuarioId")
 
         val documentoDTO = DocumentoRemoteDTO(
             nombre = nombre,
@@ -54,15 +55,12 @@ class DocumentRemoteRepository {
             tipoDocId = tipoDocId
         )
 
-        return safeApiCall {
-            api.crearDocumento(documentoDTO)
-        }
+        return safeApiCall { api.crearDocumento(userId, roleId, documentoDTO) }
     }
 
-    /**
-     * Sube multiples documentos para un usuario
-     */
     suspend fun subirMultiplesDocumentos(
+        userId: Long,
+        roleId: Int,
         usuarioId: Long,
         documentos: List<Pair<Long, String>>
     ): List<ApiResult<DocumentoRemoteDTO>> {
@@ -70,6 +68,8 @@ class DocumentRemoteRepository {
 
         return documentos.map { (tipoDocId, nombreArchivo) ->
             crearDocumento(
+                userId = userId,
+                roleId = roleId,
                 nombre = nombreArchivo,
                 usuarioId = usuarioId,
                 tipoDocId = tipoDocId,
@@ -78,72 +78,69 @@ class DocumentRemoteRepository {
         }
     }
 
-    /**
-     * Obtiene todos los documentos
-     */
-    suspend fun listarTodosDocumentos(includeDetails: Boolean = false): ApiResult<List<DocumentoRemoteDTO>> {
+    suspend fun listarTodosDocumentos(
+        userId: Long,
+        roleId: Int,
+        includeDetails: Boolean = false
+    ): ApiResult<List<DocumentoRemoteDTO>> {
         Log.d(TAG, "Listando todos los documentos")
-        return safeApiCall {
-            api.listarTodosDocumentos(includeDetails)
-        }
+        return safeApiCall { api.listarTodosDocumentos(userId, roleId, includeDetails) }
     }
 
-    /**
-     * Obtiene un documento por ID
-     */
-    suspend fun obtenerDocumentoPorId(id: Long, includeDetails: Boolean = true): ApiResult<DocumentoRemoteDTO> {
-        Log.d(TAG, "Obteniendo documento con ID: $id")
-        return safeApiCall {
-            api.obtenerDocumentoPorId(id, includeDetails)
-        }
+    suspend fun obtenerDocumentoPorId(
+        userId: Long,
+        roleId: Int,
+        id: Long,
+        includeDetails: Boolean = true
+    ): ApiResult<DocumentoRemoteDTO> {
+        Log.d(TAG, "Obteniendo documento $id")
+        return safeApiCall { api.obtenerDocumentoPorId(id, userId, roleId, includeDetails) }
     }
 
-    /**
-     * Obtiene documentos de un usuario
-     */
     suspend fun obtenerDocumentosPorUsuario(
-        usuarioId: Long,
+        userId: Long,
+        roleId: Int,
+        targetUsuarioId: Long,
         includeDetails: Boolean = true
     ): ApiResult<List<DocumentoRemoteDTO>> {
-        Log.d(TAG, "Obteniendo documentos del usuario: $usuarioId")
+        Log.d(TAG, "Obteniendo documentos del usuario $targetUsuarioId (caller=$userId)")
         return safeApiCall {
-            api.obtenerDocumentosPorUsuario(usuarioId, includeDetails)
+            api.obtenerDocumentosPorUsuario(targetUsuarioId, userId, roleId, includeDetails)
         }
     }
 
-    /**
-     * Verifica si usuario tiene documentos aprobados
-     */
-    suspend fun verificarDocumentosAprobados(usuarioId: Long): ApiResult<Boolean> {
-        Log.d(TAG, "Verificando documentos aprobados para usuario: $usuarioId")
+    suspend fun verificarDocumentosAprobados(
+        userId: Long,
+        roleId: Int,
+        targetUsuarioId: Long
+    ): ApiResult<Boolean> {
+        Log.d(TAG, "Verificando documentos aprobados para usuario $targetUsuarioId")
         return safeApiCall {
-            api.verificarDocumentosAprobados(usuarioId)
+            api.verificarDocumentosAprobados(targetUsuarioId, userId, roleId)
         }
     }
 
-    /**
-     * Actualiza estado de documento (sin observaciones)
-     */
     suspend fun actualizarEstadoDocumento(
+        userId: Long,
+        roleId: Int,
         documentoId: Long,
         nuevoEstadoId: Long
     ): ApiResult<DocumentoRemoteDTO> {
         Log.d(TAG, "Actualizando estado de documento $documentoId a $nuevoEstadoId")
         return safeApiCall {
-            api.actualizarEstadoDocumento(documentoId, nuevoEstadoId)
+            api.actualizarEstadoDocumento(documentoId, nuevoEstadoId, userId, roleId)
         }
     }
 
-    /**
-     * Actualiza estado de documento CON observaciones (para rechazos)
-     */
     suspend fun actualizarEstadoConObservaciones(
+        userId: Long,
+        roleId: Int,
         documentoId: Long,
         nuevoEstadoId: Long,
         observaciones: String?,
         revisadoPor: Long? = null
     ): ApiResult<DocumentoRemoteDTO> {
-        Log.d(TAG, "Actualizando estado de documento $documentoId a $nuevoEstadoId con observaciones")
+        Log.d(TAG, "Actualizando estado documento $documentoId con observaciones")
 
         val request = ActualizarEstadoRequest(
             estadoId = nuevoEstadoId,
@@ -151,24 +148,23 @@ class DocumentRemoteRepository {
             revisadoPor = revisadoPor
         )
 
-        return safeApiCall {
-            api.actualizarEstadoConObservaciones(documentoId, request)
-        }
+        return safeApiCall { api.actualizarEstadoConObservaciones(documentoId, userId, roleId, request) }
     }
 
-    /**
-     * Elimina un documento
-     */
-    suspend fun eliminarDocumento(id: Long): ApiResult<Unit> {
-        Log.d(TAG, "Eliminando documento con ID: $id")
+    suspend fun eliminarDocumento(
+        userId: Long,
+        roleId: Int,
+        id: Long
+    ): ApiResult<Unit> {
+        Log.d(TAG, "Eliminando documento $id (caller=$userId)")
         return try {
-            val response = api.eliminarDocumento(id)
+            val response = api.eliminarDocumento(id, userId, roleId)
             if (response.isSuccessful) {
-                Log.d(TAG, "Documento $id eliminado exitosamente")
+                Log.d(TAG, "Documento $id eliminado")
                 ApiResult.Success(Unit)
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Error ${response.code()}"
-                Log.e(TAG, "Error al eliminar documento: $errorMsg")
+                Log.e(TAG, "Error al eliminar: $errorMsg")
                 ApiResult.Error(errorMsg, response.code())
             }
         } catch (e: Exception) {
@@ -177,33 +173,25 @@ class DocumentRemoteRepository {
         }
     }
 
-    // ==================== ESTADOS ====================
+    // ==================== ESTADOS (publico) ====================
 
-    suspend fun listarEstados(): ApiResult<List<EstadoDocumentoDTO>> {
-        return safeApiCall { api.listarEstados() }
-    }
+    suspend fun listarEstados(): ApiResult<List<EstadoDocumentoDTO>> =
+        safeApiCall { api.listarEstados() }
 
-    suspend fun obtenerEstadoPorId(id: Long): ApiResult<EstadoDocumentoDTO> {
-        return safeApiCall { api.obtenerEstadoPorId(id) }
-    }
+    suspend fun obtenerEstadoPorId(id: Long): ApiResult<EstadoDocumentoDTO> =
+        safeApiCall { api.obtenerEstadoPorId(id) }
 
-    // ==================== TIPOS DE DOCUMENTOS ====================
+    // ==================== TIPOS DE DOCUMENTOS (publico) ====================
 
-    suspend fun listarTiposDocumentos(): ApiResult<List<TipoDocumentoRemoteDTO>> {
-        return safeApiCall { api.listarTiposDocumentos() }
-    }
+    suspend fun listarTiposDocumentos(): ApiResult<List<TipoDocumentoRemoteDTO>> =
+        safeApiCall { api.listarTiposDocumentos() }
 
-    suspend fun obtenerTipoDocumentoPorId(id: Long): ApiResult<TipoDocumentoRemoteDTO> {
-        return safeApiCall { api.obtenerTipoDocumentoPorId(id) }
-    }
+    suspend fun obtenerTipoDocumentoPorId(id: Long): ApiResult<TipoDocumentoRemoteDTO> =
+        safeApiCall { api.obtenerTipoDocumentoPorId(id) }
 
     // ==================== HELPERS ====================
 
-    fun generarNombreDocumento(
-        tipoDocId: Long,
-        nombreUsuario: String,
-        extension: String = "pdf"
-    ): String {
+    fun generarNombreDocumento(tipoDocId: Long, nombreUsuario: String, extension: String = "pdf"): String {
         val tipoNombre = when (tipoDocId) {
             TIPO_DNI -> "DNI"
             TIPO_PASAPORTE -> "PASAPORTE"
@@ -213,36 +201,25 @@ class DocumentRemoteRepository {
             TIPO_CONTRATO_TRABAJO -> "CONTRATO"
             else -> "DOC"
         }
-
-        val nombreLimpio = nombreUsuario
-            .replace(" ", "_")
-            .replace(Regex("[^A-Za-z0-9_]"), "")
-            .take(20)
-
-        val timestamp = System.currentTimeMillis()
-
-        return "${tipoNombre}_${nombreLimpio}_$timestamp.$extension"
+        val nombreLimpio = nombreUsuario.replace(" ", "_").replace(Regex("[^A-Za-z0-9_]"), "").take(20)
+        return "${tipoNombre}_${nombreLimpio}_${System.currentTimeMillis()}.$extension"
     }
 
-    fun getNombreTipoDocumento(tipoDocId: Long): String {
-        return when (tipoDocId) {
-            TIPO_DNI -> "Cedula de Identidad"
-            TIPO_PASAPORTE -> "Pasaporte"
-            TIPO_LIQUIDACION_SUELDO -> "Liquidacion de Sueldo"
-            TIPO_CERTIFICADO_ANTECEDENTES -> "Certificado de Antecedentes"
-            TIPO_CERTIFICADO_AFP -> "Certificado AFP"
-            TIPO_CONTRATO_TRABAJO -> "Contrato de Trabajo"
-            else -> "Documento"
-        }
+    fun getNombreTipoDocumento(tipoDocId: Long): String = when (tipoDocId) {
+        TIPO_DNI -> "Cedula de Identidad"
+        TIPO_PASAPORTE -> "Pasaporte"
+        TIPO_LIQUIDACION_SUELDO -> "Liquidacion de Sueldo"
+        TIPO_CERTIFICADO_ANTECEDENTES -> "Certificado de Antecedentes"
+        TIPO_CERTIFICADO_AFP -> "Certificado AFP"
+        TIPO_CONTRATO_TRABAJO -> "Contrato de Trabajo"
+        else -> "Documento"
     }
 
-    fun getNombreEstado(estadoId: Long): String {
-        return when (estadoId) {
-            ESTADO_PENDIENTE -> "Pendiente"
-            ESTADO_ACEPTADO -> "Aceptado"
-            ESTADO_RECHAZADO -> "Rechazado"
-            ESTADO_EN_REVISION -> "En Revision"
-            else -> "Desconocido"
-        }
+    fun getNombreEstado(estadoId: Long): String = when (estadoId) {
+        ESTADO_PENDIENTE -> "Pendiente"
+        ESTADO_ACEPTADO -> "Aceptado"
+        ESTADO_RECHAZADO -> "Rechazado"
+        ESTADO_EN_REVISION -> "En Revision"
+        else -> "Desconocido"
     }
 }

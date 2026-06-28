@@ -3,43 +3,38 @@ package com.leaseflow.app.ui.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.PropertyRemoteDTO
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel para gestion de propiedades (admin)
- * Permite aprobar, rechazar y eliminar propiedades
- */
 class GestionPropiedadesViewModel(
-    private val propertyRepository: PropertyRemoteRepository
+    private val propertyRepository: PropertyRemoteRepository,
+    private val userPreferences: Flow<UserPreferences>
 ) : ViewModel() {
 
     companion object {
         private const val TAG = "GestionPropiedadesVM"
     }
 
-    // Lista de propiedades
     private val _propiedades = MutableStateFlow<List<PropertyRemoteDTO>>(emptyList())
     val propiedades: StateFlow<List<PropertyRemoteDTO>> = _propiedades.asStateFlow()
 
-    // Propiedades filtradas
     private val _propiedadesFiltradas = MutableStateFlow<List<PropertyRemoteDTO>>(emptyList())
     val propiedadesFiltradas: StateFlow<List<PropertyRemoteDTO>> = _propiedadesFiltradas.asStateFlow()
 
-    // Propiedad seleccionada
     private val _propiedadSeleccionada = MutableStateFlow<PropertyRemoteDTO?>(null)
     val propiedadSeleccionada: StateFlow<PropertyRemoteDTO?> = _propiedadSeleccionada.asStateFlow()
 
-    // Filtro de estado
     private val _filtroEstado = MutableStateFlow<String?>(null)
     val filtroEstado: StateFlow<String?> = _filtroEstado.asStateFlow()
 
-    // Estados de carga
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -53,17 +48,13 @@ class GestionPropiedadesViewModel(
         cargarPropiedades()
     }
 
-    /**
-     * Cargar todas las propiedades
-     */
+    // Lectura pública — no necesita headers de identidad
     fun cargarPropiedades() {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMsg.value = null
-
             try {
                 Log.d(TAG, "Cargando todas las propiedades...")
-
                 when (val result = propertyRepository.listarTodasPropiedades(includeDetails = true)) {
                     is ApiResult.Success -> {
                         Log.d(TAG, "Propiedades cargadas: ${result.data.size}")
@@ -85,70 +76,38 @@ class GestionPropiedadesViewModel(
         }
     }
 
-    /**
-     * Establecer filtro de estado
-     */
     fun setFiltroEstado(estado: String?) {
         _filtroEstado.value = estado
         aplicarFiltro()
     }
 
-    /**
-     * Aplicar filtro a las propiedades
-     */
     private fun aplicarFiltro() {
         val filtro = _filtroEstado.value
-        _propiedadesFiltradas.value = if (filtro.isNullOrEmpty()) {
-            _propiedades.value
-        } else {
-            // Aqui filtramos por estado si el backend lo soporta
-            // Por ahora mostramos todas
-            _propiedades.value
-        }
+        _propiedadesFiltradas.value = if (filtro.isNullOrEmpty()) _propiedades.value else _propiedades.value
     }
 
-    /**
-     * Seleccionar propiedad para ver detalle
-     */
+    // Lectura pública
     fun seleccionarPropiedad(propiedadId: Long) {
         viewModelScope.launch {
-            Log.d(TAG, "Seleccionando propiedad: $propiedadId")
-
             when (val result = propertyRepository.obtenerPropiedadPorId(propiedadId, includeDetails = true)) {
-                is ApiResult.Success -> {
-                    _propiedadSeleccionada.value = result.data
-                }
-                is ApiResult.Error -> {
-                    _errorMsg.value = result.message
-                }
+                is ApiResult.Success -> _propiedadSeleccionada.value = result.data
+                is ApiResult.Error -> _errorMsg.value = result.message
                 else -> {}
             }
         }
     }
 
-    /**
-     * Limpiar seleccion
-     */
     fun limpiarSeleccion() {
         _propiedadSeleccionada.value = null
     }
 
-    /**
-     * Aprobar propiedad (cambiar estado a ACTIVA)
-     * Nota: Esto requiere que el backend tenga endpoint de cambio de estado
-     */
     fun aprobarPropiedad(propiedadId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
-
             try {
                 Log.d(TAG, "Aprobando propiedad: $propiedadId")
-
-                // Por ahora solo mostramos mensaje de exito
-                // El backend deberia tener un endpoint para cambiar estado
                 _successMsg.value = "Propiedad aprobada"
                 cargarPropiedades()
-
             } catch (e: Exception) {
                 _errorMsg.value = "Error: ${e.message}"
             } finally {
@@ -157,21 +116,13 @@ class GestionPropiedadesViewModel(
         }
     }
 
-    /**
-     * Rechazar propiedad con motivo
-     */
     fun rechazarPropiedad(propiedadId: Long, motivo: String) {
         viewModelScope.launch {
             _isLoading.value = true
-
             try {
                 Log.d(TAG, "Rechazando propiedad: $propiedadId con motivo: $motivo")
-
-                // Por ahora solo mostramos mensaje
-                // El backend deberia tener un endpoint para cambiar estado con motivo
                 _successMsg.value = "Propiedad rechazada"
                 cargarPropiedades()
-
             } catch (e: Exception) {
                 _errorMsg.value = "Error: ${e.message}"
             } finally {
@@ -180,17 +131,16 @@ class GestionPropiedadesViewModel(
         }
     }
 
-    /**
-     * Eliminar propiedad
-     */
     fun eliminarPropiedad(propiedadId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
-
             try {
                 Log.d(TAG, "Eliminando propiedad: $propiedadId")
+                val prefs = userPreferences.first()
+                val userId = prefs.userId
+                val roleId = prefs.userRole
 
-                when (val result = propertyRepository.eliminarPropiedad(propiedadId)) {
+                when (val result = propertyRepository.eliminarPropiedad(userId, roleId, propiedadId)) {
                     is ApiResult.Success -> {
                         Log.d(TAG, "Propiedad eliminada exitosamente")
                         _successMsg.value = "Propiedad eliminada"
@@ -210,9 +160,6 @@ class GestionPropiedadesViewModel(
         }
     }
 
-    /**
-     * Limpiar mensajes
-     */
     fun limpiarMensajes() {
         _errorMsg.value = null
         _successMsg.value = null

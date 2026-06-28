@@ -2,19 +2,19 @@ package com.leaseflow.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.repository.ReviewRemoteRepository
+import kotlinx.coroutines.flow.Flow
 
-/**
- * Factory para ReviewViewModel
- */
 class ReviewViewModelFactory(
-    private val reviewRepository: ReviewRemoteRepository
+    private val reviewRepository: ReviewRemoteRepository,
+    private val userPreferences: Flow<UserPreferences>
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ReviewViewModel::class.java)) {
-            return ReviewViewModel(reviewRepository) as T
+            return ReviewViewModel(reviewRepository, userPreferences) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

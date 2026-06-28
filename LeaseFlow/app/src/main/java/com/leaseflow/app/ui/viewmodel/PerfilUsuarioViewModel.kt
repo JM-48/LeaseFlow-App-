@@ -6,12 +6,15 @@ import com.leaseflow.app.data.local.dao.UsuarioDao
 import com.leaseflow.app.data.local.dao.CatalogDao
 import com.leaseflow.app.data.local.dao.SolicitudDao
 import com.leaseflow.app.data.local.entities.UsuarioEntity
+import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.UsuarioUpdateRemoteDTO
 import com.leaseflow.app.data.repository.LeaseFlowUserRepository
 import com.leaseflow.app.data.repository.UserRemoteRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class PerfilUsuarioViewModel(
@@ -19,7 +22,8 @@ class PerfilUsuarioViewModel(
     private val catalogDao: CatalogDao,
     private val solicitudDao: SolicitudDao,
     private val userRemoteRepository: UserRemoteRepository,
-    private val localUserRepository: LeaseFlowUserRepository
+    private val localUserRepository: LeaseFlowUserRepository,
+    private val userPreferences: Flow<UserPreferences>
 ) : ViewModel() {
 
     private val _usuario = MutableStateFlow<UsuarioEntity?>(null)
@@ -46,17 +50,17 @@ class PerfilUsuarioViewModel(
             _errorMsg.value = null
 
             try {
-                // Carga inicial rápida de Room (datos antiguos)
                 val localUser = usuarioDao.getById(usuarioId)
                 _usuario.value = localUser
 
-                // Vamos al servidor por la verdad absoluta
-                when (val remoteResult = userRemoteRepository.obtenerUsuarioPorId(usuarioId, includeDetails = true)) {
+                val prefs = userPreferences.first()
+                val userId = prefs.userId
+                val roleId = prefs.userRole
+
+                when (val remoteResult = userRemoteRepository.obtenerUsuarioPorId(userId, roleId, usuarioId, includeDetails = true)) {
                     is ApiResult.Success -> {
-                        // Intentamos sincronizar en segundo plano
                         localUserRepository.syncUsuarioFromRemote(remoteResult.data)
 
-                        // FORZAMOS a la app a mostrar los datos reales del servidor inmediatamente
                         _usuario.value = UsuarioEntity(
                             id = remoteResult.data.id ?: usuarioId,
                             pnombre = remoteResult.data.pnombre ?: "Admin",
@@ -64,7 +68,7 @@ class PerfilUsuarioViewModel(
                             papellido = remoteResult.data.papellido ?: "LeaseFlowx",
                             fnacimiento = System.currentTimeMillis(),
                             email = remoteResult.data.email ?: "admin@leaseflow.cl",
-                            rut = remoteResult.data.rut ?: "19430962-7", // <-- Aquí capturamos el RUT remoto
+                            rut = remoteResult.data.rut ?: "19430962-7",
                             ntelefono = remoteResult.data.ntelefono ?: "+56911111112",
                             direccion = null,
                             comuna = null,
@@ -112,6 +116,10 @@ class PerfilUsuarioViewModel(
             _isSaving.value = true
             _errorMsg.value = null
             try {
+                val prefs = userPreferences.first()
+                val userId = prefs.userId
+                val roleId = prefs.userRole
+
                 val updateDto = UsuarioUpdateRemoteDTO(
                     pnombre = pnombre,
                     snombre = snombre,
@@ -122,13 +130,10 @@ class PerfilUsuarioViewModel(
                     estadoId = _usuario.value?.estado_id
                 )
 
-                when (val result = userRemoteRepository.actualizarUsuario(usuarioId, updateDto)) {
+                when (val result = userRemoteRepository.actualizarUsuario(userId, roleId, usuarioId, updateDto)) {
                     is ApiResult.Success -> {
-                        // 1. Dejamos que se sincronice Room en segundo plano
                         localUserRepository.syncUsuarioFromRemote(result.data)
 
-                        // 2. SOLUCIÓN: Actualizamos el estado de la RAM inmediatamente
-                        // con los datos que el usuario escribió y que ya fueron aceptados por el servidor
                         _usuario.value = _usuario.value?.copy(
                             pnombre = pnombre,
                             snombre = snombre,
@@ -137,7 +142,6 @@ class PerfilUsuarioViewModel(
                             fotoPerfil = fotoUri ?: _usuario.value?.fotoPerfil
                         )
 
-                        // 3. Si se subió una foto local, la aseguramos en la BD
                         if (fotoUri != null) {
                             _usuario.value?.let { usuarioDao.update(it) }
                         }

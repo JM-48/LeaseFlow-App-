@@ -9,138 +9,107 @@ import retrofit2.http.*
 
 /**
  * API para comunicacion con Document Service (Puerto 8083)
+ *
+ * Capas de seguridad:
+ *   Capa 1 (X-App-Client): interceptor global OkHttp en RetrofitClient.
+ *   Capa 2 (X-Usuario-Id / X-Rol-Id): requerida en todos los endpoints
+ *   excepto catalogos de solo lectura (listarEstados, listarTiposDocumentos y sus GET por ID).
  */
 interface DocumentServiceApi {
 
     // ==================== DOCUMENTOS ====================
 
-    /**
-     * Crear/subir nuevo documento
-     * POST /api/documentos
-     */
     @POST("api/documentos")
     suspend fun crearDocumento(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body documento: DocumentoRemoteDTO
     ): Response<DocumentoRemoteDTO>
 
-    /**
-     * Listar todos los documentos
-     * GET /api/documentos
-     */
     @GET("api/documentos")
     suspend fun listarTodosDocumentos(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Query("includeDetails") includeDetails: Boolean = false
     ): Response<List<DocumentoRemoteDTO>>
 
-    /**
-     * Obtener documento por ID
-     * GET /api/documentos/{id}
-     */
     @GET("api/documentos/{id}")
     suspend fun obtenerDocumentoPorId(
         @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Query("includeDetails") includeDetails: Boolean = true
     ): Response<DocumentoRemoteDTO>
 
-    /**
-     * Obtener documentos por usuario
-     * GET /api/documentos/usuario/{usuarioId}
-     */
     @GET("api/documentos/usuario/{usuarioId}")
     suspend fun obtenerDocumentosPorUsuario(
         @Path("usuarioId") usuarioId: Long,
+        @Header("X-Usuario-Id") headerUsuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Query("includeDetails") includeDetails: Boolean = true
     ): Response<List<DocumentoRemoteDTO>>
 
-    /**
-     * Verificar si usuario tiene documentos aprobados
-     * GET /api/documentos/usuario/{usuarioId}/verificar-aprobados
-     */
     @GET("api/documentos/usuario/{usuarioId}/verificar-aprobados")
     suspend fun verificarDocumentosAprobados(
-        @Path("usuarioId") usuarioId: Long
+        @Path("usuarioId") usuarioId: Long,
+        @Header("X-Usuario-Id") headerUsuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<Boolean>
 
-    /**
-     * Actualizar estado de documento (sin observaciones - compatibilidad)
-     * PATCH /api/documentos/{id}/estado/{estadoId}
-     */
     @PATCH("api/documentos/{id}/estado/{estadoId}")
     suspend fun actualizarEstadoDocumento(
         @Path("id") id: Long,
-        @Path("estadoId") estadoId: Long
+        @Path("estadoId") estadoId: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<DocumentoRemoteDTO>
 
-    /**
-     * NUEVO: Actualizar estado de documento CON observaciones
-     * PATCH /api/documentos/{id}/estado
-     */
     @PATCH("api/documentos/{id}/estado")
     suspend fun actualizarEstadoConObservaciones(
         @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body request: ActualizarEstadoRequest
     ): Response<DocumentoRemoteDTO>
 
-    /**
-     * Eliminar documento
-     * DELETE /api/documentos/{id}
-     */
     @DELETE("api/documentos/{id}")
     suspend fun eliminarDocumento(
-        @Path("id") id: Long
+        @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<Void>
 
-    // ==================== ESTADOS ====================
+    // ==================== ESTADOS (catalogo — publico) ====================
 
-    /**
-     * Listar todos los estados
-     * GET /api/estados
-     */
     @GET("api/estados")
     suspend fun listarEstados(): Response<List<EstadoDocumentoDTO>>
 
-    /**
-     * Obtener estado por ID
-     * GET /api/estados/{id}
-     */
     @GET("api/estados/{id}")
     suspend fun obtenerEstadoPorId(
         @Path("id") id: Long
     ): Response<EstadoDocumentoDTO>
 
-    /**
-     * Crear nuevo estado
-     * POST /api/estados
-     */
     @POST("api/estados")
     suspend fun crearEstado(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body estado: EstadoDocumentoDTO
     ): Response<EstadoDocumentoDTO>
 
-    // ==================== TIPOS DE DOCUMENTOS ====================
+    // ==================== TIPOS DE DOCUMENTOS (catalogo — publico) ====================
 
-    /**
-     * Listar todos los tipos de documentos
-     * GET /api/tipos-documentos
-     */
     @GET("api/tipos-documentos")
     suspend fun listarTiposDocumentos(): Response<List<TipoDocumentoRemoteDTO>>
 
-    /**
-     * Obtener tipo de documento por ID
-     * GET /api/tipos-documentos/{id}
-     */
     @GET("api/tipos-documentos/{id}")
     suspend fun obtenerTipoDocumentoPorId(
         @Path("id") id: Long
     ): Response<TipoDocumentoRemoteDTO>
 
-    /**
-     * Crear nuevo tipo de documento
-     * POST /api/tipos-documentos
-     */
     @POST("api/tipos-documentos")
     suspend fun crearTipoDocumento(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body tipoDoc: TipoDocumentoRemoteDTO
     ): Response<TipoDocumentoRemoteDTO>
 }

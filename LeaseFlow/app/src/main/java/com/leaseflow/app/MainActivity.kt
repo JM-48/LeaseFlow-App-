@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.leaseflow.app.data.local.LeaseFlowDatabase
+import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.repository.ApplicationRemoteRepository
 import com.leaseflow.app.data.repository.DocumentRemoteRepository
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
@@ -31,6 +32,10 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
                     val db = LeaseFlowDatabase.getInstance(applicationContext)
+
+                    // Flow de preferencias del usuario — fuente única para todas las factories
+                    val userPrefs = UserPreferences(applicationContext)
+                    val userPreferencesFlow = userPrefs.data
 
                     // ==================== REPOSITORIOS ====================
 
@@ -85,7 +90,8 @@ class MainActivity : ComponentActivity() {
                             propiedadDao = db.propiedadDao(),
                             catalogDao = db.catalogDao(),
                             remoteRepository = applicationRemoteRepository,
-                            propertyRepository = propertyRemoteRepository
+                            propertyRepository = propertyRemoteRepository,
+                            userPreferences = userPreferencesFlow
                         )
                     )
 
@@ -95,12 +101,16 @@ class MainActivity : ComponentActivity() {
                             catalogDao = db.catalogDao(),
                             solicitudDao = db.solicitudDao(),
                             userRemoteRepository = userRemoteRepository,
-                            localUserRepository = leaseFlowUserRepository
+                            localUserRepository = leaseFlowUserRepository,
+                            userPreferences = userPreferencesFlow
                         )
                     )
 
                     val reviewViewModel: ReviewViewModel = viewModel(
-                        factory = ReviewViewModelFactory(reviewRemoteRepository)
+                        factory = ReviewViewModelFactory(
+                            reviewRepository = reviewRemoteRepository,
+                            userPreferences = userPreferencesFlow
+                        )
                     )
 
                     // ==================== NAVEGACION ====================
@@ -113,7 +123,8 @@ class MainActivity : ComponentActivity() {
                         propiedadDetalleViewModel = propiedadDetalleViewModel,
                         solicitudesViewModel = solicitudesViewModel,
                         perfilViewModel = perfilViewModel,
-                        reviewViewModel = reviewViewModel
+                        reviewViewModel = reviewViewModel,
+                        userPreferencesFlow = userPreferencesFlow
                     )
                 }
             }

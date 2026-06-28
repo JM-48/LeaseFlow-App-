@@ -7,118 +7,106 @@ import retrofit2.Response
 import retrofit2.http.*
 
 /**
- * API para comunicación con Contact Service (Puerto 8085)
- * Coincide exactamente con los controllers del backend
+ * API para comunicacion con Contact Service (Puerto 8085)
+ *
+ * Capas de seguridad:
+ *   Capa 1 (X-App-Client): interceptor global OkHttp en RetrofitClient.
+ *   Capa 2 (X-Usuario-Id / X-Rol-Id): requerida en endpoints de admin y consultas.
+ *
+ * Publico (sin headers de identidad):
+ *   - crearMensaje: cualquier visitante puede enviar un mensaje de contacto.
+ *
+ * Protegidos (requieren headers de identidad):
+ *   - Todo lo demas (listar, consultar, actualizar, responder, eliminar).
  */
 interface ContactServiceApi {
 
     // ==================== MENSAJES DE CONTACTO ====================
 
     /**
-     * Crear nuevo mensaje de contacto
-     * POST /api/contacto
+     * Crear nuevo mensaje — publico, no requiere identidad.
      */
     @POST("api/contacto")
     suspend fun crearMensaje(
         @Body mensaje: MensajeContactoDTO
     ): Response<MensajeContactoDTO>
 
-    /**
-     * Listar todos los mensajes
-     * GET /api/contacto
-     */
     @GET("api/contacto")
     suspend fun listarTodosMensajes(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Query("includeDetails") includeDetails: Boolean = false
     ): Response<List<MensajeContactoDTO>>
 
-    /**
-     * Obtener mensaje por ID
-     * GET /api/contacto/{id}
-     */
     @GET("api/contacto/{id}")
     suspend fun obtenerMensajePorId(
         @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Query("includeDetails") includeDetails: Boolean = true
     ): Response<MensajeContactoDTO>
 
-    /**
-     * Listar mensajes por email
-     * GET /api/contacto/email/{email}
-     */
     @GET("api/contacto/email/{email}")
     suspend fun listarMensajesPorEmail(
-        @Path("email") email: String
+        @Path("email") email: String,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<List<MensajeContactoDTO>>
 
-    /**
-     * Listar mensajes por usuario
-     * GET /api/contacto/usuario/{usuarioId}
-     */
     @GET("api/contacto/usuario/{usuarioId}")
     suspend fun listarMensajesPorUsuario(
-        @Path("usuarioId") usuarioId: Long
+        @Path("usuarioId") usuarioId: Long,
+        @Header("X-Usuario-Id") headerUsuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<List<MensajeContactoDTO>>
 
-    /**
-     * Listar mensajes por estado
-     * GET /api/contacto/estado/{estado}
-     */
     @GET("api/contacto/estado/{estado}")
     suspend fun listarMensajesPorEstado(
-        @Path("estado") estado: String  // PENDIENTE, EN_PROCESO, RESUELTO
+        @Path("estado") estado: String,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<List<MensajeContactoDTO>>
 
-    /**
-     * Listar mensajes sin responder
-     * GET /api/contacto/sin-responder
-     */
     @GET("api/contacto/sin-responder")
-    suspend fun listarMensajesSinResponder(): Response<List<MensajeContactoDTO>>
+    suspend fun listarMensajesSinResponder(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
+    ): Response<List<MensajeContactoDTO>>
 
-    /**
-     * Buscar mensajes por palabra clave
-     * GET /api/contacto/buscar
-     */
     @GET("api/contacto/buscar")
     suspend fun buscarMensajesPorPalabraClave(
-        @Query("keyword") keyword: String
+        @Query("keyword") keyword: String,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<List<MensajeContactoDTO>>
 
-    /**
-     * Actualizar estado de mensaje
-     * PATCH /api/contacto/{id}/estado
-     */
     @PATCH("api/contacto/{id}/estado")
     suspend fun actualizarEstadoMensaje(
         @Path("id") id: Long,
-        @Query("estado") estado: String  // PENDIENTE, EN_PROCESO, RESUELTO
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
+        @Query("estado") estado: String
     ): Response<MensajeContactoDTO>
 
-    /**
-     * Responder mensaje de contacto (solo admin)
-     * POST /api/contacto/{id}/responder
-     */
     @POST("api/contacto/{id}/responder")
     suspend fun responderMensaje(
         @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body respuesta: RespuestaMensajeDTO
     ): Response<MensajeContactoDTO>
 
-    /**
-     * Eliminar mensaje (solo admin)
-     * DELETE /api/contacto/{id}
-     */
     @DELETE("api/contacto/{id}")
     suspend fun eliminarMensaje(
         @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Query("adminId") adminId: Long
     ): Response<Void>
 
-    /**
-     * Obtener estadísticas de mensajes (solo admin)
-     * GET /api/contacto/estadisticas
-     */
     @GET("api/contacto/estadisticas")
-    suspend fun obtenerEstadisticas(): Response<Map<String, Long>>
+    suspend fun obtenerEstadisticas(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
+    ): Response<Map<String, Long>>
 }

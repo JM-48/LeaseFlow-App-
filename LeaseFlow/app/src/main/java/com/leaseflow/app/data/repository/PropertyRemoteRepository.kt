@@ -5,15 +5,14 @@ import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.RetrofitClient
 import com.leaseflow.app.data.remote.dto.*
 import com.leaseflow.app.data.remote.safeApiCall
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import java.io.File
-import android.webkit.MimeTypeMap
 
 /**
- * Repositorio para comunicacion con Property Service (Puerto 8082)
- * Incluye manejo de errores y logging completo
+ * Repositorio para comunicacion con Property Service (Puerto 8082).
+ *
+ * CAMBIO: Metodos protegidos reciben (userId: Long, roleId: Int) y los
+ * propagan como headers X-Usuario-Id / X-Rol-Id.
+ * Metodos de solo lectura publica no los necesitan.
  */
 class PropertyRemoteRepository {
 
@@ -25,191 +24,80 @@ class PropertyRemoteRepository {
 
     // ==================== PROPIEDADES ====================
 
-    /**
-     * Crear nueva propiedad
-     */
     suspend fun crearPropiedad(
-        codigo: String,
-        titulo: String,
-        precioMensual: Double,
-        divisa: String = "CLP",
-        m2: Double,
-        nHabit: Int,
-        nBanos: Int,
-        petFriendly: Boolean,
-        direccion: String,
-        tipoId: Long,
-        comunaId: Long,
-        propietarioId: Long? = null
+        userId: Long,
+        roleId: Int,
+        propiedad: PropertyRemoteDTO
     ): ApiResult<PropertyRemoteDTO> {
-        Log.d(TAG, "Creando propiedad: codigo=$codigo, titulo=$titulo")
-
-        val propertyDTO = PropertyRemoteDTO(
-            codigo = codigo,
-            titulo = titulo,
-            precioMensual = precioMensual,
-            divisa = divisa,
-            m2 = m2,
-            nHabit = nHabit,
-            nBanos = nBanos,
-            petFriendly = petFriendly,
-            direccion = direccion,
-            tipoId = tipoId,
-            comunaId = comunaId,
-            propietarioId = propietarioId
-        )
-
-        return when (val result = safeApiCall { api.crearPropiedad(propertyDTO) }) {
-            is ApiResult.Success -> {
-                Log.d(TAG, "Propiedad creada: id=${result.data.id}")
-                result
-            }
-            is ApiResult.Error -> {
-                Log.e(TAG, "Error al crear propiedad: ${result.message}")
-                val friendlyMessage = parsePropertyError(result.message, result.code)
-                ApiResult.Error(friendlyMessage, result.code)
-            }
-            else -> result
-        }
+        Log.d(TAG, "Creando propiedad (caller=$userId)")
+        return safeApiCall { api.crearPropiedad(userId, roleId, propiedad) }
     }
 
-    /**
-     * Listar todas las propiedades
-     */
     suspend fun listarTodasPropiedades(
+        page: Int = 0,
+        size: Int = 100,
         includeDetails: Boolean = false
-    ): ApiResult<List<PropertyRemoteDTO>> {
-        Log.d(TAG, "Listando propiedades: includeDetails=$includeDetails")
-
-        // 1. Agregamos los parámetros page y size a la llamada de Retrofit
-        val response = safeApiCall {
-            api.listarTodasPropiedades(page = 0, size = 100, includeDetails = includeDetails)
-        }
-
-        return when (response) {
-            is ApiResult.Success -> {
-                // 2. response.data ahora es de tipo PageResponse
-                // Por lo tanto, nuestra lista de propiedades está dentro de .content
-                val propiedades = response.data.content
-
-                Log.d(TAG, "Propiedades obtenidas: ${propiedades.size}")
-
-                // 3. Empaquetamos la lista limpia de vuelta en un ApiResult.Success
-                ApiResult.Success(propiedades)
-            }
-            is ApiResult.Error -> {
-                Log.e(TAG, "Error al listar propiedades: ${response.message}")
-                // Retornamos el error tal cual (con un cast seguro para Kotlin)
-                @Suppress("UNCHECKED_CAST")
-                response as ApiResult<List<PropertyRemoteDTO>>
-            }
-            else -> {
-                @Suppress("UNCHECKED_CAST")
-                response as ApiResult<List<PropertyRemoteDTO>>
-            }
-        }
+    ): ApiResult<PageResponse<PropertyRemoteDTO>> {
+        Log.d(TAG, "Listando propiedades: page=$page, size=$size")
+        return safeApiCall { api.listarTodasPropiedades(page, size, includeDetails) }
     }
 
     suspend fun listarPropiedadesPorUsuario(
-        usuarioId: Long,
+        userId: Long,
+        roleId: Int,
+        propietarioId: Long,
         includeDetails: Boolean = false
     ): ApiResult<List<PropertyRemoteDTO>> {
-        Log.d(TAG, "Listando propiedades por usuario: usuarioId=$usuarioId, includeDetails=$includeDetails")
-        return when (val result = safeApiCall { api.listarPropiedadesPorUsuario(usuarioId, includeDetails) }) {
-            is ApiResult.Success -> {
-                Log.d(TAG, "Propiedades obtenidas: ${result.data.size}")
-                result
-            }
-            is ApiResult.Error -> {
-                Log.e(TAG, "Error al listar propiedades: ${result.message}")
-                result
-            }
-            else -> result
+        Log.d(TAG, "Listando propiedades de usuario $propietarioId (caller=$userId)")
+        return safeApiCall {
+            api.listarPropiedadesPorUsuario(propietarioId, userId, roleId, includeDetails)
         }
     }
 
-    /**
-     * Obtener propiedad por ID
-     */
     suspend fun obtenerPropiedadPorId(
-        propiedadId: Long,
+        id: Long,
         includeDetails: Boolean = true
     ): ApiResult<PropertyRemoteDTO> {
-        Log.d(TAG, "Obteniendo propiedad: id=$propiedadId")
-
-        return when (val result = safeApiCall { api.obtenerPropiedadPorId(propiedadId, includeDetails) }) {
-            is ApiResult.Success -> {
-                Log.d(TAG, "Propiedad obtenida: ${result.data.titulo}")
-                result
-            }
-            is ApiResult.Error -> {
-                Log.e(TAG, "Error al obtener propiedad: ${result.message}")
-                result
-            }
-            else -> result
-        }
+        Log.d(TAG, "Obteniendo propiedad $id")
+        return safeApiCall { api.obtenerPropiedadPorId(id, includeDetails) }
     }
 
-    /**
-     * Obtener propiedad por codigo
-     */
     suspend fun obtenerPropiedadPorCodigo(
         codigo: String,
         includeDetails: Boolean = true
     ): ApiResult<PropertyRemoteDTO> {
         Log.d(TAG, "Obteniendo propiedad por codigo: $codigo")
-
         return safeApiCall { api.obtenerPropiedadPorCodigo(codigo, includeDetails) }
     }
 
-    /**
-     * Actualizar propiedad
-     */
     suspend fun actualizarPropiedad(
-        propiedadId: Long,
-        propertyDTO: PropertyRemoteDTO
+        userId: Long,
+        roleId: Int,
+        id: Long,
+        propiedad: PropertyRemoteDTO
     ): ApiResult<PropertyRemoteDTO> {
-        Log.d(TAG, "Actualizando propiedad: id=$propiedadId")
+        Log.d(TAG, "Actualizando propiedad $id (caller=$userId)")
+        return safeApiCall { api.actualizarPropiedad(id, userId, roleId, propiedad) }
+    }
 
-        return when (val result = safeApiCall { api.actualizarPropiedad(propiedadId, propertyDTO) }) {
-            is ApiResult.Success -> {
-                Log.d(TAG, "Propiedad actualizada: ${result.data.titulo}")
-                result
-            }
-            is ApiResult.Error -> {
-                Log.e(TAG, "Error al actualizar: ${result.message}")
-                val friendlyMessage = parsePropertyError(result.message, result.code)
-                ApiResult.Error(friendlyMessage, result.code)
-            }
-            else -> result
+    suspend fun eliminarPropiedad(
+        userId: Long,
+        roleId: Int,
+        id: Long
+    ): ApiResult<Unit> {
+        Log.d(TAG, "Eliminando propiedad $id (caller=$userId)")
+        return try {
+            val response = api.eliminarPropiedad(id, userId, roleId)
+            if (response.isSuccessful) ApiResult.Success(Unit)
+            else ApiResult.Error("Error ${response.code()}", response.code())
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "Error de conexion")
         }
     }
 
-    /**
-     * Eliminar propiedad
-     */
-    suspend fun eliminarPropiedad(propiedadId: Long): ApiResult<Unit> {
-        Log.d(TAG, "Eliminando propiedad: id=$propiedadId")
-
-        return when (val result = safeApiCall { api.eliminarPropiedad(propiedadId) }) {
-            is ApiResult.Success -> {
-                Log.d(TAG, "Propiedad eliminada exitosamente")
-                ApiResult.Success(Unit)
-            }
-            is ApiResult.Error -> {
-                Log.e(TAG, "Error al eliminar: ${result.message}")
-                result
-            }
-            else -> ApiResult.Success(Unit)
-        }
-    }
-
-    /**
-     * Buscar propiedades con filtros
-     */
     suspend fun buscarPropiedadesConFiltros(
-        comunaId: Long? = null,
         tipoId: Long? = null,
+        comunaId: Long? = null,
         minPrecio: Double? = null,
         maxPrecio: Double? = null,
         nHabit: Int? = null,
@@ -217,262 +105,165 @@ class PropertyRemoteRepository {
         petFriendly: Boolean? = null,
         includeDetails: Boolean = false
     ): ApiResult<List<PropertyRemoteDTO>> {
-        Log.d(TAG, "Buscando con filtros: comunaId=$comunaId, tipoId=$tipoId")
-
+        Log.d(TAG, "Buscando propiedades con filtros")
         return safeApiCall {
             api.buscarPropiedadesConFiltros(
-                comunaId, tipoId, minPrecio, maxPrecio,
+                tipoId, comunaId, minPrecio, maxPrecio,
                 nHabit, nBanos, petFriendly, includeDetails
             )
         }
     }
 
-    /**
-     * Verificar existencia de propiedad
-     */
-    suspend fun existePropiedad(propiedadId: Long): ApiResult<Boolean> {
-        return safeApiCall { api.existePropiedad(propiedadId) }
+    suspend fun existePropiedad(id: Long): ApiResult<Boolean> {
+        return safeApiCall { api.existePropiedad(id) }
     }
 
     // ==================== FOTOS ====================
 
-    /**
-     * Subir foto a propiedad
-     */
-    suspend fun subirFoto(propiedadId: Long, file: File): ApiResult<FotoRemoteDTO> {
-        Log.d(TAG, "Subiendo foto: propiedad=$propiedadId, archivo=${file.name}")
-
-        val extension = MimeTypeMap.getFileExtensionFromUrl(file.path)
-        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "image/jpeg"
-
-        // Usar el tipo MIME real (ej: image/jpeg, image/png)
-        val requestBody = file.asRequestBody(mimeType.toMediaTypeOrNull())
-
-
-        val multipartBody = MultipartBody.Part.createFormData("file", file.name, requestBody)
-
-        return when (val result = safeApiCall { api.subirFoto(propiedadId, multipartBody) }) {
-            is ApiResult.Success -> {
-                Log.d(TAG, "Foto subida: id=${result.data.id}")
-                result
-            }
-            is ApiResult.Error -> {
-                Log.e(TAG, "Error al subir foto: ${result.message}")
-                val friendlyMessage = parsePhotoError(result.message, result.code)
-                ApiResult.Error(friendlyMessage, result.code)
-            }
-            else -> result
-        }
+    suspend fun subirFoto(
+        userId: Long,
+        roleId: Int,
+        propertyId: Long,
+        file: MultipartBody.Part
+    ): ApiResult<FotoRemoteDTO> {
+        Log.d(TAG, "Subiendo foto para propiedad $propertyId (caller=$userId)")
+        return safeApiCall { api.subirFoto(propertyId, userId, roleId, file) }
     }
 
-    /**
-     * Listar fotos de propiedad
-     */
-    suspend fun listarFotos(propiedadId: Long): ApiResult<List<FotoRemoteDTO>> {
-        Log.d(TAG, "Listando fotos: propiedad=$propiedadId")
-        return safeApiCall { api.listarFotos(propiedadId) }
+    suspend fun listarFotos(propertyId: Long): ApiResult<List<FotoRemoteDTO>> {
+        return safeApiCall { api.listarFotos(propertyId) }
     }
 
-    /**
-     * Obtener foto por ID
-     */
     suspend fun obtenerFoto(fotoId: Long): ApiResult<FotoRemoteDTO> {
         return safeApiCall { api.obtenerFoto(fotoId) }
     }
 
-    /**
-     * Eliminar foto
-     */
-    suspend fun eliminarFoto(fotoId: Long): ApiResult<Unit> {
-        Log.d(TAG, "Eliminando foto: id=$fotoId")
-
-        return when (val result = safeApiCall { api.eliminarFoto(fotoId) }) {
-            is ApiResult.Success -> {
-                Log.d(TAG, "Foto eliminada exitosamente")
-                ApiResult.Success(Unit)
-            }
-            is ApiResult.Error -> {
-                Log.e(TAG, "Error al eliminar foto: ${result.message}")
-                result
-            }
-            else -> ApiResult.Success(Unit)
+    suspend fun eliminarFoto(
+        userId: Long,
+        roleId: Int,
+        fotoId: Long
+    ): ApiResult<Unit> {
+        Log.d(TAG, "Eliminando foto $fotoId (caller=$userId)")
+        return try {
+            val response = api.eliminarFoto(fotoId, userId, roleId)
+            if (response.isSuccessful) ApiResult.Success(Unit)
+            else ApiResult.Error("Error ${response.code()}", response.code())
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "Error de conexion")
         }
     }
 
-    /**
-     * Reordenar fotos de propiedad
-     */
-    suspend fun reordenarFotos(propiedadId: Long, fotosIds: List<Long>): ApiResult<Unit> {
-        Log.d(TAG, "Reordenando fotos: propiedad=$propiedadId")
-
-        return when (val result = safeApiCall { api.reordenarFotos(propiedadId, fotosIds) }) {
-            is ApiResult.Success -> ApiResult.Success(Unit)
-            is ApiResult.Error -> result
-            else -> ApiResult.Success(Unit)
+    suspend fun reordenarFotos(
+        userId: Long,
+        roleId: Int,
+        propertyId: Long,
+        fotosIds: List<Long>
+    ): ApiResult<Unit> {
+        return try {
+            val response = api.reordenarFotos(propertyId, userId, roleId, fotosIds)
+            if (response.isSuccessful) ApiResult.Success(Unit)
+            else ApiResult.Error("Error ${response.code()}", response.code())
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "Error de conexion")
         }
     }
 
-    // ==================== CATALOGOS ====================
+    // ==================== TIPOS ====================
 
-    /**
-     * Listar todos los tipos
-     */
-    suspend fun listarTipos(): ApiResult<List<TipoRemoteDTO>> {
-        Log.d(TAG, "Listando tipos")
-        return safeApiCall { api.listarTipos() }
-    }
+    suspend fun crearTipo(userId: Long, roleId: Int, tipo: TipoRemoteDTO): ApiResult<TipoRemoteDTO> =
+        safeApiCall { api.crearTipo(userId, roleId, tipo) }
 
-    /**
-     * Obtener tipo por ID
-     */
-    suspend fun obtenerTipoPorId(id: Long): ApiResult<TipoRemoteDTO> {
-        return safeApiCall { api.obtenerTipoPorId(id) }
-    }
+    suspend fun listarTipos(): ApiResult<List<TipoRemoteDTO>> =
+        safeApiCall { api.listarTipos() }
 
-    /**
-     * Listar todas las comunas
-     */
-    suspend fun listarComunas(): ApiResult<List<ComunaRemoteDTO>> {
-        Log.d(TAG, "Listando comunas")
-        return safeApiCall { api.listarComunas() }
-    }
+    suspend fun obtenerTipoPorId(id: Long): ApiResult<TipoRemoteDTO> =
+        safeApiCall { api.obtenerTipoPorId(id) }
 
-    /**
-     * Obtener comuna por ID
-     */
-    suspend fun obtenerComunaPorId(id: Long): ApiResult<ComunaRemoteDTO> {
-        return safeApiCall { api.obtenerComunaPorId(id) }
-    }
+    suspend fun actualizarTipo(userId: Long, roleId: Int, id: Long, tipo: TipoRemoteDTO): ApiResult<TipoRemoteDTO> =
+        safeApiCall { api.actualizarTipo(id, userId, roleId, tipo) }
 
-    /**
-     * Obtener comunas por region
-     */
-    suspend fun obtenerComunasPorRegion(regionId: Long): ApiResult<List<ComunaRemoteDTO>> {
-        Log.d(TAG, "Obteniendo comunas de region: $regionId")
-        return safeApiCall { api.obtenerComunasPorRegion(regionId) }
-    }
-
-    /**
-     * Listar todas las regiones
-     */
-    suspend fun listarRegiones(): ApiResult<List<RegionRemoteDTO>> {
-        Log.d(TAG, "Listando regiones")
-        return safeApiCall { api.listarRegiones() }
-    }
-
-    /**
-     * Obtener region por ID
-     */
-    suspend fun obtenerRegionPorId(id: Long): ApiResult<RegionRemoteDTO> {
-        return safeApiCall { api.obtenerRegionPorId(id) }
-    }
-
-    /**
-     * Listar todas las categorias
-     */
-    suspend fun listarCategorias(): ApiResult<List<CategoriaRemoteDTO>> {
-        Log.d(TAG, "Listando categorias")
-        return safeApiCall { api.listarCategorias() }
-    }
-
-    /**
-     * Obtener categoria por ID
-     */
-    suspend fun obtenerCategoriaPorId(id: Long): ApiResult<CategoriaRemoteDTO> {
-        return safeApiCall { api.obtenerCategoriaPorId(id) }
-    }
-
-    // ==================== PARSING DE ERRORES ====================
-
-    /**
-     * Parsear errores del backend para propiedades
-     */
-    private fun parsePropertyError(rawMessage: String, code: Int?): String {
-        Log.d(TAG, "Parseando error propiedad: code=$code, message=$rawMessage")
-
-        return when (code) {
-            400 -> {
-                when {
-                    rawMessage.contains("codigo", ignoreCase = true) &&
-                            (rawMessage.contains("duplicado", ignoreCase = true) ||
-                                    rawMessage.contains("existe", ignoreCase = true)) ->
-                        "El codigo de propiedad ya existe"
-
-                    rawMessage.contains("divisa", ignoreCase = true) &&
-                            rawMessage.contains("invalida", ignoreCase = true) ->
-                        "Divisa no valida. Usa CLP, UF o USD"
-
-                    rawMessage.contains("precio", ignoreCase = true) &&
-                            rawMessage.contains("invalido", ignoreCase = true) ->
-                        "El precio debe ser mayor a 0"
-
-                    rawMessage.contains("m2", ignoreCase = true) &&
-                            rawMessage.contains("invalido", ignoreCase = true) ->
-                        "Los metros cuadrados deben estar entre 10 y 10000"
-
-                    rawMessage.contains("habitaciones", ignoreCase = true) ->
-                        "El numero de habitaciones debe estar entre 0 y 20"
-
-                    rawMessage.contains("banos", ignoreCase = true) ->
-                        "El numero de banos debe estar entre 1 y 10"
-
-                    rawMessage.contains("tipo", ignoreCase = true) &&
-                            rawMessage.contains("no encontrado", ignoreCase = true) ->
-                        "El tipo de propiedad seleccionado no existe"
-
-                    rawMessage.contains("comuna", ignoreCase = true) &&
-                            rawMessage.contains("no encontrada", ignoreCase = true) ->
-                        "La comuna seleccionada no existe"
-
-                    rawMessage.contains("obligatorio", ignoreCase = true) ->
-                        "Faltan campos obligatorios"
-
-                    else -> "Error de validacion: $rawMessage"
-                }
-            }
-            404 -> "Propiedad no encontrada"
-            503 -> "Servicio no disponible. Intenta nuevamente."
-            500 -> "Error interno del servidor"
-            else -> rawMessage
+    suspend fun eliminarTipo(userId: Long, roleId: Int, id: Long): ApiResult<Unit> {
+        return try {
+            val response = api.eliminarTipo(id, userId, roleId)
+            if (response.isSuccessful) ApiResult.Success(Unit)
+            else ApiResult.Error("Error ${response.code()}", response.code())
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "Error de conexion")
         }
     }
 
-    /**
-     * Parsear errores del backend para fotos
-     */
-    private fun parsePhotoError(rawMessage: String, code: Int?): String {
-        Log.d(TAG, "Parseando error foto: code=$code, message=$rawMessage")
+    // ==================== COMUNAS ====================
 
-        val normalized = rawMessage.lowercase()
-        val seemsLimitError =
-            (normalized.contains("maximo") || normalized.contains("máximo") || normalized.contains("limite") || normalized.contains("límite") || normalized.contains("limit") || normalized.contains("max")) &&
-                (normalized.contains("20") || normalized.contains("veinte")) &&
-                (normalized.contains("foto") || normalized.contains("fotos") || normalized.contains("imagen") || normalized.contains("imagenes") || normalized.contains("image") || normalized.contains("photo"))
+    suspend fun crearComuna(userId: Long, roleId: Int, comuna: ComunaRemoteDTO): ApiResult<ComunaRemoteDTO> =
+        safeApiCall { api.crearComuna(userId, roleId, comuna) }
 
-        return when (code) {
-            400 -> {
-                when {
-                    rawMessage.contains("vacio", ignoreCase = true) ||
-                            rawMessage.contains("empty", ignoreCase = true) ->
-                        "Debes seleccionar un archivo"
+    suspend fun listarComunas(): ApiResult<List<ComunaRemoteDTO>> =
+        safeApiCall { api.listarComunas() }
 
-                    rawMessage.contains("formato", ignoreCase = true) ||
-                            rawMessage.contains("tipo de archivo", ignoreCase = true) ->
-                        "Formato no soportado. Usa JPG, PNG o GIF"
+    suspend fun obtenerComunaPorId(id: Long): ApiResult<ComunaRemoteDTO> =
+        safeApiCall { api.obtenerComunaPorId(id) }
 
-                    rawMessage.contains("tamano", ignoreCase = true) ||
-                            rawMessage.contains("size", ignoreCase = true) ||
-                            rawMessage.contains("grande", ignoreCase = true) ->
-                        "El archivo es muy grande. Maximo 10MB"
+    suspend fun obtenerComunasPorRegion(regionId: Long): ApiResult<List<ComunaRemoteDTO>> =
+        safeApiCall { api.obtenerComunasPorRegion(regionId) }
 
-                    seemsLimitError ->
-                        "Has alcanzado el limite de 20 fotos por propiedad"
+    suspend fun actualizarComuna(userId: Long, roleId: Int, id: Long, comuna: ComunaRemoteDTO): ApiResult<ComunaRemoteDTO> =
+        safeApiCall { api.actualizarComuna(id, userId, roleId, comuna) }
 
-                    else -> rawMessage.ifBlank { "Error al subir foto" }
-                }
-            }
-            404 -> "Foto o propiedad no encontrada"
-            else -> rawMessage.ifBlank { "Error al subir foto" }
+    suspend fun eliminarComuna(userId: Long, roleId: Int, id: Long): ApiResult<Unit> {
+        return try {
+            val response = api.eliminarComuna(id, userId, roleId)
+            if (response.isSuccessful) ApiResult.Success(Unit)
+            else ApiResult.Error("Error ${response.code()}", response.code())
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "Error de conexion")
+        }
+    }
+
+    // ==================== REGIONES ====================
+
+    suspend fun crearRegion(userId: Long, roleId: Int, region: RegionRemoteDTO): ApiResult<RegionRemoteDTO> =
+        safeApiCall { api.crearRegion(userId, roleId, region) }
+
+    suspend fun listarRegiones(): ApiResult<List<RegionRemoteDTO>> =
+        safeApiCall { api.listarRegiones() }
+
+    suspend fun obtenerRegionPorId(id: Long): ApiResult<RegionRemoteDTO> =
+        safeApiCall { api.obtenerRegionPorId(id) }
+
+    suspend fun actualizarRegion(userId: Long, roleId: Int, id: Long, region: RegionRemoteDTO): ApiResult<RegionRemoteDTO> =
+        safeApiCall { api.actualizarRegion(id, userId, roleId, region) }
+
+    suspend fun eliminarRegion(userId: Long, roleId: Int, id: Long): ApiResult<Unit> {
+        return try {
+            val response = api.eliminarRegion(id, userId, roleId)
+            if (response.isSuccessful) ApiResult.Success(Unit)
+            else ApiResult.Error("Error ${response.code()}", response.code())
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "Error de conexion")
+        }
+    }
+
+    // ==================== CATEGORIAS ====================
+
+    suspend fun crearCategoria(userId: Long, roleId: Int, categoria: CategoriaRemoteDTO): ApiResult<CategoriaRemoteDTO> =
+        safeApiCall { api.crearCategoria(userId, roleId, categoria) }
+
+    suspend fun listarCategorias(): ApiResult<List<CategoriaRemoteDTO>> =
+        safeApiCall { api.listarCategorias() }
+
+    suspend fun obtenerCategoriaPorId(id: Long): ApiResult<CategoriaRemoteDTO> =
+        safeApiCall { api.obtenerCategoriaPorId(id) }
+
+    suspend fun actualizarCategoria(userId: Long, roleId: Int, id: Long, categoria: CategoriaRemoteDTO): ApiResult<CategoriaRemoteDTO> =
+        safeApiCall { api.actualizarCategoria(id, userId, roleId, categoria) }
+
+    suspend fun eliminarCategoria(userId: Long, roleId: Int, id: Long): ApiResult<Unit> {
+        return try {
+            val response = api.eliminarCategoria(id, userId, roleId)
+            if (response.isSuccessful) ApiResult.Success(Unit)
+            else ApiResult.Error("Error ${response.code()}", response.code())
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "Error de conexion")
         }
     }
 }

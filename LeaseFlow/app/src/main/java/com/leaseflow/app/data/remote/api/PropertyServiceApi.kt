@@ -5,23 +5,52 @@ import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.*
 
+/**
+ * API para comunicacion con Property Service (Puerto 8082)
+ *
+ * Capas de seguridad:
+ *   Capa 1 (X-App-Client): interceptor global OkHttp en RetrofitClient.
+ *   Capa 2 (X-Usuario-Id / X-Rol-Id): requerida en endpoints de escritura y admin.
+ *
+ * Publicos (sin headers de identidad):
+ *   - listarTodasPropiedades, obtenerPropiedadPorId, obtenerPropiedadPorCodigo
+ *   - buscarPropiedadesConFiltros, existePropiedad, listarFotos, obtenerFoto
+ *   - listarTipos, obtenerTipoPorId, listarComunas, obtenerComunaPorId,
+ *     obtenerComunasPorRegion, listarRegiones, obtenerRegionPorId,
+ *     listarCategorias, obtenerCategoriaPorId
+ *
+ * Protegidos (requieren headers de identidad):
+ *   - crearPropiedad, actualizarPropiedad, eliminarPropiedad
+ *   - listarPropiedadesPorUsuario
+ *   - subirFoto, eliminarFoto, reordenarFotos
+ *   - crearTipo, actualizarTipo, eliminarTipo
+ *   - crearComuna, actualizarComuna, eliminarComuna
+ *   - crearRegion, actualizarRegion, eliminarRegion
+ *   - crearCategoria, actualizarCategoria, eliminarCategoria
+ */
 interface PropertyServiceApi {
+
+    // ==================== PROPIEDADES ====================
 
     @POST("api/propiedades")
     suspend fun crearPropiedad(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body propiedad: PropertyRemoteDTO
     ): Response<PropertyRemoteDTO>
 
     @GET("api/propiedades")
     suspend fun listarTodasPropiedades(
         @Query("page") page: Int = 0,
-        @Query("size") size: Int = 100, // Traemos 100 de golpe para que el mapa se llene bien
+        @Query("size") size: Int = 100,
         @Query("includeDetails") includeDetails: Boolean = false
     ): Response<PageResponse<PropertyRemoteDTO>>
 
     @GET("api/propiedades/usuario/{usuarioId}")
     suspend fun listarPropiedadesPorUsuario(
         @Path("usuarioId") usuarioId: Long,
+        @Header("X-Usuario-Id") headerUsuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Query("includeDetails") includeDetails: Boolean = false
     ): Response<List<PropertyRemoteDTO>>
 
@@ -40,12 +69,16 @@ interface PropertyServiceApi {
     @PUT("api/propiedades/{id}")
     suspend fun actualizarPropiedad(
         @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body propiedad: PropertyRemoteDTO
     ): Response<PropertyRemoteDTO>
 
     @DELETE("api/propiedades/{id}")
     suspend fun eliminarPropiedad(
-        @Path("id") id: Long
+        @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<Void>
 
     @GET("api/propiedades/buscar")
@@ -65,10 +98,14 @@ interface PropertyServiceApi {
         @Path("id") id: Long
     ): Response<Boolean>
 
+    // ==================== FOTOS ====================
+
     @Multipart
     @POST("api/propiedades/{id}/fotos")
     suspend fun subirFoto(
         @Path("id") propertyId: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Part file: MultipartBody.Part
     ): Response<FotoRemoteDTO>
 
@@ -84,17 +121,25 @@ interface PropertyServiceApi {
 
     @DELETE("api/fotos/{fotoId}")
     suspend fun eliminarFoto(
-        @Path("fotoId") fotoId: Long
+        @Path("fotoId") fotoId: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<Void>
 
     @PUT("api/propiedades/{id}/fotos/reordenar")
     suspend fun reordenarFotos(
         @Path("id") propertyId: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body fotosIds: List<Long>
     ): Response<Void>
 
+    // ==================== TIPOS (catalogo) ====================
+
     @POST("api/tipos")
     suspend fun crearTipo(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body tipo: TipoRemoteDTO
     ): Response<TipoRemoteDTO>
 
@@ -109,16 +154,24 @@ interface PropertyServiceApi {
     @PUT("api/tipos/{id}")
     suspend fun actualizarTipo(
         @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body tipo: TipoRemoteDTO
     ): Response<TipoRemoteDTO>
 
     @DELETE("api/tipos/{id}")
     suspend fun eliminarTipo(
-        @Path("id") id: Long
+        @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<Void>
+
+    // ==================== COMUNAS (catalogo) ====================
 
     @POST("api/comunas")
     suspend fun crearComuna(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body comuna: ComunaRemoteDTO
     ): Response<ComunaRemoteDTO>
 
@@ -138,16 +191,24 @@ interface PropertyServiceApi {
     @PUT("api/comunas/{id}")
     suspend fun actualizarComuna(
         @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body comuna: ComunaRemoteDTO
     ): Response<ComunaRemoteDTO>
 
     @DELETE("api/comunas/{id}")
     suspend fun eliminarComuna(
-        @Path("id") id: Long
+        @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<Void>
+
+    // ==================== REGIONES (catalogo) ====================
 
     @POST("api/regiones")
     suspend fun crearRegion(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body region: RegionRemoteDTO
     ): Response<RegionRemoteDTO>
 
@@ -162,16 +223,24 @@ interface PropertyServiceApi {
     @PUT("api/regiones/{id}")
     suspend fun actualizarRegion(
         @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body region: RegionRemoteDTO
     ): Response<RegionRemoteDTO>
 
     @DELETE("api/regiones/{id}")
     suspend fun eliminarRegion(
-        @Path("id") id: Long
+        @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<Void>
+
+    // ==================== CATEGORIAS (catalogo) ====================
 
     @POST("api/categorias")
     suspend fun crearCategoria(
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body categoria: CategoriaRemoteDTO
     ): Response<CategoriaRemoteDTO>
 
@@ -186,11 +255,15 @@ interface PropertyServiceApi {
     @PUT("api/categorias/{id}")
     suspend fun actualizarCategoria(
         @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int,
         @Body categoria: CategoriaRemoteDTO
     ): Response<CategoriaRemoteDTO>
 
     @DELETE("api/categorias/{id}")
     suspend fun eliminarCategoria(
-        @Path("id") id: Long
+        @Path("id") id: Long,
+        @Header("X-Usuario-Id") usuarioId: Long,
+        @Header("X-Rol-Id") rolId: Int
     ): Response<Void>
 }

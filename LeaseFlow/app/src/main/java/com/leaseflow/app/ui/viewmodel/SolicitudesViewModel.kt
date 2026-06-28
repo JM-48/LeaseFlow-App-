@@ -7,10 +7,12 @@ import com.leaseflow.app.data.local.dao.SolicitudDao
 import com.leaseflow.app.data.local.dao.PropiedadDao
 import com.leaseflow.app.data.local.dao.CatalogDao
 import com.leaseflow.app.data.local.entities.SolicitudEntity
+import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.SolicitudArriendoDTO
 import com.leaseflow.app.data.repository.ApplicationRemoteRepository
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,14 +37,15 @@ data class SolicitudConDatos(
 )
 
 /**
- * ViewModel para gestión de solicitudes (Corregido y Optimizado)
+ * ViewModel para gestión de solicitudes
  */
 class SolicitudesViewModel(
     private val solicitudDao: SolicitudDao,
     private val propiedadDao: PropiedadDao,
     private val catalogDao: CatalogDao,
     private val remoteRepository: ApplicationRemoteRepository,
-    private val propertyRepository: PropertyRemoteRepository? = null
+    private val propertyRepository: PropertyRemoteRepository? = null,
+    private val userPreferences: Flow<UserPreferences>
 ) : ViewModel() {
 
     companion object {
@@ -64,7 +67,6 @@ class SolicitudesViewModel(
     private val _filtroEstado = MutableStateFlow<String?>(null)
     val filtroEstado: StateFlow<String?> = _filtroEstado.asStateFlow()
 
-    // Rastreador interno para saber qué lista volver a cargar tras una actualización de estado
     private var ultimoModoCargado: (() -> Unit)? = null
 
     /**
@@ -77,7 +79,11 @@ class SolicitudesViewModel(
             _errorMsg.value = null
 
             try {
-                when (val result = remoteRepository.obtenerSolicitudesUsuario(usuarioId)) {
+                val prefs = userPreferences.first()
+                val userId = prefs.userId
+                val roleId = prefs.userRole
+
+                when (val result = remoteRepository.obtenerSolicitudesUsuario(userId, roleId, usuarioId)) {
                     is ApiResult.Success -> {
                         Log.d(TAG, "Solicitudes cargadas para arrendatario: ${result.data.size}")
 
@@ -122,10 +128,7 @@ class SolicitudesViewModel(
     }
 
     /**
-     * Cargar solicitudes del propietario (Solución al fallo de seguridad)
-     */
-    /**
-     * Cargar solicitudes del propietario (Corregido)
+     * Cargar solicitudes del propietario
      */
     fun cargarSolicitudesPropietario(propietarioId: Long = 1L) {
         ultimoModoCargado = { cargarSolicitudesPropietario(propietarioId) }
@@ -134,28 +137,25 @@ class SolicitudesViewModel(
             _errorMsg.value = null
 
             try {
-                // 1. Obtenemos TODAS las solicitudes del sistema
-                when (val result = remoteRepository.listarTodasSolicitudes()) {
+                val prefs = userPreferences.first()
+                val userId = prefs.userId
+                val roleId = prefs.userRole
+
+                when (val result = remoteRepository.listarTodasSolicitudes(userId, roleId)) {
                     is ApiResult.Success -> {
                         val listaMisSolicitudesRecibidas = mutableListOf<SolicitudConDatos>()
 
-                        // 2. Revisamos una por una a qué propiedad corresponden
                         for (dto in result.data) {
                             var solicitudEnriquecida = mapearSolicitud(dto)
 
                             if (propertyRepository != null) {
                                 val propId = dto.propiedadId
-                                // 3. Consultamos al PropertyService los detalles de ESA propiedad
                                 when (val propResult = propertyRepository.obtenerPropiedadPorId(propId)) {
                                     is ApiResult.Success -> {
                                         val propReal = propResult.data
-
-                                        // 4. VERIFICACIÓN MAGISTRAL: ¿Soy el dueño de esta propiedad?
-                                        // Revisamos 'propietarioId' (o 'usuarioId' según tu DTO)
                                         val soyElDueño = (propReal.propietarioId == propietarioId)
 
                                         if (soyElDueño) {
-                                            // 5. Como es mía, enriquezco la data para que se vea bien en la pantalla
                                             solicitudEnriquecida = solicitudEnriquecida.copy(
                                                 tituloPropiedad = propReal.titulo ?: "Propiedad $propId",
                                                 codigoPropiedad = propReal.codigo,
@@ -166,14 +166,11 @@ class SolicitudesViewModel(
                                             listaMisSolicitudesRecibidas.add(solicitudEnriquecida)
                                         }
                                     }
-                                    else -> {
-                                        Log.w(TAG, "No se pudo obtener detalles de la propiedad $propId")
-                                    }
+                                    else -> Log.w(TAG, "No se pudo obtener detalles de la propiedad $propId")
                                 }
                             }
                         }
 
-                        // 6. Actualizamos la vista SOLO con las solicitudes de MIS propiedades
                         _solicitudes.value = listaMisSolicitudesRecibidas
                     }
                     is ApiResult.Error -> {
@@ -193,7 +190,7 @@ class SolicitudesViewModel(
     }
 
     /**
-     * Cargar todas las solicitudes (Vista exclusiva de administración global)
+     * Cargar todas las solicitudes (Admin)
      */
     fun cargarTodasSolicitudes() {
         ultimoModoCargado = { cargarTodasSolicitudes() }
@@ -202,7 +199,11 @@ class SolicitudesViewModel(
             _errorMsg.value = null
 
             try {
-                when (val result = remoteRepository.listarTodasSolicitudes()) {
+                val prefs = userPreferences.first()
+                val userId = prefs.userId
+                val roleId = prefs.userRole
+
+                when (val result = remoteRepository.listarTodasSolicitudes(userId, roleId)) {
                     is ApiResult.Success -> {
                         _solicitudes.value = mapearSolicitudes(result.data)
                     }
@@ -270,38 +271,14 @@ class SolicitudesViewModel(
             _isLoading.value = true
             _errorMsg.value = null
             try {
-                when (val result = remoteRepository.cancelarSolicitud(solicitudId)) {
+                val prefs = userPreferences.first()
+                val userId = prefs.userId
+                val roleId = prefs.userRole
+
+                when (val result = remoteRepository.cancelarSolicitud(userId, roleId, solicitudId)) {
                     is ApiResult.Success -> {
                         _successMsg.value = "Solicitud cancelada correctamente"
                         cargarSolicitudesArrendatario(usuarioId)
-                    }
-                    is ApiResult.Error -> {
-                        _errorMsg.value = result.message
-                    }
-                    else -> {}
-                }
-            } catch (e: Exception) {
-                _errorMsg.value = e.message
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    /**
-     * Actualizar estado dinámico (Solución al refresco cruzado)
-     */
-    private fun actualizarEstado(solicitudId: Long, nuevoEstado: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _errorMsg.value = null
-
-            try {
-                when (val result = remoteRepository.actualizarEstadoSolicitud(solicitudId, nuevoEstado)) {
-                    is ApiResult.Success -> {
-                        _successMsg.value = "Solicitud ${nuevoEstado.lowercase()} con éxito"
-                        // SOLUCIÓN: Refresca dinámicamente el último contexto consultado (Admin, Propietario o Inquilino)
-                        ultimoModoCargado?.invoke() ?: cargarTodasSolicitudes()
                     }
                     is ApiResult.Error -> {
                         _errorMsg.value = result.message
@@ -322,7 +299,11 @@ class SolicitudesViewModel(
     fun seleccionarSolicitud(solicitudId: Long) {
         viewModelScope.launch {
             try {
-                when (val result = remoteRepository.obtenerSolicitudPorId(solicitudId)) {
+                val prefs = userPreferences.first()
+                val userId = prefs.userId
+                val roleId = prefs.userRole
+
+                when (val result = remoteRepository.obtenerSolicitudPorId(userId, roleId, solicitudId)) {
                     is ApiResult.Success -> {
                         val solicitudConDatos = mapearSolicitud(result.data)
                         val listaActual = _solicitudes.value.toMutableList()
@@ -345,6 +326,37 @@ class SolicitudesViewModel(
         }
     }
 
+    /**
+     * Actualizar estado dinámico
+     */
+    private fun actualizarEstado(solicitudId: Long, nuevoEstado: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMsg.value = null
+
+            try {
+                val prefs = userPreferences.first()
+                val userId = prefs.userId
+                val roleId = prefs.userRole
+
+                when (val result = remoteRepository.actualizarEstadoSolicitud(userId, roleId, solicitudId, nuevoEstado)) {
+                    is ApiResult.Success -> {
+                        _successMsg.value = "Solicitud ${nuevoEstado.lowercase()} con éxito"
+                        ultimoModoCargado?.invoke() ?: cargarTodasSolicitudes()
+                    }
+                    is ApiResult.Error -> {
+                        _errorMsg.value = result.message
+                    }
+                    else -> {}
+                }
+            } catch (e: Exception) {
+                _errorMsg.value = e.message
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     fun setFiltroEstado(estado: String?) {
         _filtroEstado.value = estado
     }
@@ -354,7 +366,6 @@ class SolicitudesViewModel(
 
     private suspend fun cargarSolicitudesLocales() {
         val solicitudesLocales = solicitudDao.getAll().first()
-
         _solicitudes.value = solicitudesLocales.map { entity ->
             SolicitudConDatos(
                 solicitud = entity,
@@ -367,9 +378,6 @@ class SolicitudesViewModel(
         return dtos.map { dto -> mapearSolicitud(dto) }
     }
 
-    /**
-     * Mapeo robusto con normalización estricta de textos
-     */
     private fun mapearSolicitud(dto: SolicitudArriendoDTO): SolicitudConDatos {
         val nombreUsuario = dto.usuario?.let { u ->
             listOfNotNull(u.pnombre, u.snombre, u.papellido)
@@ -378,7 +386,6 @@ class SolicitudesViewModel(
                 .ifEmpty { "Usuario" }
         }
 
-        // SOLUCIÓN: Sanitizar y normalizar el string del estado técnico del backend
         val estadoNormalizado = cuandoEstadoSeaPendiente(dto.estado ?: "PENDIENTE")
 
         return SolicitudConDatos(
@@ -392,7 +399,7 @@ class SolicitudesViewModel(
             ),
             tituloPropiedad = dto.propiedad?.titulo,
             codigoPropiedad = dto.propiedad?.codigo,
-            nombreEstado = estadoNormalizado, // Mayúsculas controladas para las Cards de Compose
+            nombreEstado = estadoNormalizado,
             precioMensual = dto.propiedad?.precioMensual,
             fotoUrl = dto.propiedad?.fotos?.firstOrNull()?.url,
             nombreSolicitante = nombreUsuario,

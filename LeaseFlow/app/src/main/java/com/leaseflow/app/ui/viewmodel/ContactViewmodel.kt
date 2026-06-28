@@ -2,35 +2,31 @@ package com.leaseflow.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.MensajeContactoDTO
 import com.leaseflow.app.data.repository.ContactRemoteRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel para gestión de mensajes de contacto
- * ✅ Integrado con Contact Service (Puerto 8085)
- */
 class ContactViewModel(
-    private val contactRepository: ContactRemoteRepository
+    private val contactRepository: ContactRemoteRepository,
+    private val userPreferences: Flow<UserPreferences>
 ) : ViewModel() {
 
-    // Estado de mensajes
     private val _mensajes = MutableStateFlow<List<MensajeContactoDTO>>(emptyList())
     val mensajes: StateFlow<List<MensajeContactoDTO>> = _mensajes
 
-    // Estado de mensaje seleccionado
     private val _mensajeSeleccionado = MutableStateFlow<MensajeContactoDTO?>(null)
     val mensajeSeleccionado: StateFlow<MensajeContactoDTO?> = _mensajeSeleccionado
 
-    // Estadísticas
     private val _estadisticas = MutableStateFlow<Map<String, Long>>(emptyMap())
     val estadisticas: StateFlow<Map<String, Long>> = _estadisticas
 
-    // Estados de UI
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
@@ -40,11 +36,7 @@ class ContactViewModel(
     private val _successMessage = MutableStateFlow<String?>(null)
     val successMessage: StateFlow<String?> = _successMessage
 
-    // ==================== CREAR MENSAJE ====================
-
-    /**
-     * Crear nuevo mensaje de contacto
-     */
+    // crearMensaje es público — no necesita userId/roleId
     fun crearMensaje(
         nombre: String,
         email: String,
@@ -67,243 +59,193 @@ class ContactViewModel(
             )) {
                 is ApiResult.Success -> {
                     _successMessage.value = "Mensaje enviado exitosamente. Le responderemos pronto."
-                    // Si es usuario autenticado, recargar sus mensajes
                     usuarioId?.let { cargarMensajesPorUsuario(it) }
                 }
-                is ApiResult.Error -> {
-                    _errorMessage.value = result.message
-                }
-                else -> {
-                    _errorMessage.value = "Error al enviar mensaje"
-                }
+                is ApiResult.Error -> _errorMessage.value = result.message
+                else -> _errorMessage.value = "Error al enviar mensaje"
             }
 
             _isLoading.value = false
         }
     }
 
-    // ==================== CARGAR MENSAJES ====================
-
-    /**
-     * Cargar todos los mensajes (admin)
-     */
     fun cargarTodosMensajes() {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
 
-            when (val result = contactRepository.listarTodosMensajes(includeDetails = true)) {
-                is ApiResult.Success -> {
-                    _mensajes.value = result.data
-                }
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
+
+            when (val result = contactRepository.listarTodosMensajes(userId, roleId, includeDetails = true)) {
+                is ApiResult.Success -> _mensajes.value = result.data
                 is ApiResult.Error -> {
                     _errorMessage.value = result.message
                     _mensajes.value = emptyList()
                 }
-                else -> {
-                    _errorMessage.value = "Error al cargar mensajes"
-                }
+                else -> _errorMessage.value = "Error al cargar mensajes"
             }
 
             _isLoading.value = false
         }
     }
 
-    /**
-     * Cargar mensajes por usuario
-     */
     fun cargarMensajesPorUsuario(usuarioId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
 
-            when (val result = contactRepository.listarMensajesPorUsuario(usuarioId)) {
-                is ApiResult.Success -> {
-                    _mensajes.value = result.data
-                }
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
+
+            when (val result = contactRepository.listarMensajesPorUsuario(userId, roleId, usuarioId)) {
+                is ApiResult.Success -> _mensajes.value = result.data
                 is ApiResult.Error -> {
                     _errorMessage.value = result.message
                     _mensajes.value = emptyList()
                 }
-                else -> {
-                    _errorMessage.value = "Error al cargar mensajes"
-                }
+                else -> _errorMessage.value = "Error al cargar mensajes"
             }
 
             _isLoading.value = false
         }
     }
 
-    /**
-     * Cargar mensajes por email
-     */
     fun cargarMensajesPorEmail(email: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
 
-            when (val result = contactRepository.listarMensajesPorEmail(email)) {
-                is ApiResult.Success -> {
-                    _mensajes.value = result.data
-                }
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
+
+            when (val result = contactRepository.listarMensajesPorEmail(userId, roleId, email)) {
+                is ApiResult.Success -> _mensajes.value = result.data
                 is ApiResult.Error -> {
                     _errorMessage.value = result.message
                     _mensajes.value = emptyList()
                 }
-                else -> {
-                    _errorMessage.value = "Error al cargar mensajes"
-                }
+                else -> _errorMessage.value = "Error al cargar mensajes"
             }
 
             _isLoading.value = false
         }
     }
 
-    /**
-     * Cargar mensajes por estado
-     */
     fun cargarMensajesPorEstado(estado: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
 
-            when (val result = contactRepository.listarMensajesPorEstado(estado)) {
-                is ApiResult.Success -> {
-                    _mensajes.value = result.data
-                }
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
+
+            when (val result = contactRepository.listarMensajesPorEstado(userId, roleId, estado)) {
+                is ApiResult.Success -> _mensajes.value = result.data
                 is ApiResult.Error -> {
                     _errorMessage.value = result.message
                     _mensajes.value = emptyList()
                 }
-                else -> {
-                    _errorMessage.value = "Error al cargar mensajes"
-                }
+                else -> _errorMessage.value = "Error al cargar mensajes"
             }
 
             _isLoading.value = false
         }
     }
 
-    /**
-     * Cargar mensajes sin responder (admin)
-     */
     fun cargarMensajesSinResponder() {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
 
-            when (val result = contactRepository.listarMensajesSinResponder()) {
-                is ApiResult.Success -> {
-                    _mensajes.value = result.data
-                }
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
+
+            when (val result = contactRepository.listarMensajesSinResponder(userId, roleId)) {
+                is ApiResult.Success -> _mensajes.value = result.data
                 is ApiResult.Error -> {
                     _errorMessage.value = result.message
                     _mensajes.value = emptyList()
                 }
-                else -> {
-                    _errorMessage.value = "Error al cargar mensajes"
-                }
+                else -> _errorMessage.value = "Error al cargar mensajes"
             }
 
             _isLoading.value = false
         }
     }
 
-    /**
-     * Buscar mensajes por palabra clave
-     */
     fun buscarMensajes(keyword: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
 
-            when (val result = contactRepository.buscarMensajes(keyword)) {
-                is ApiResult.Success -> {
-                    _mensajes.value = result.data
-                }
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
+
+            when (val result = contactRepository.buscarMensajes(userId, roleId, keyword)) {
+                is ApiResult.Success -> _mensajes.value = result.data
                 is ApiResult.Error -> {
                     _errorMessage.value = result.message
                     _mensajes.value = emptyList()
                 }
-                else -> {
-                    _errorMessage.value = "Error al buscar mensajes"
-                }
+                else -> _errorMessage.value = "Error al buscar mensajes"
             }
 
             _isLoading.value = false
         }
     }
 
-    // ==================== DETALLE DE MENSAJE ====================
-
-    /**
-     * Cargar detalle de un mensaje
-     */
     fun cargarMensajePorId(mensajeId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
 
-            when (val result = contactRepository.obtenerMensajePorId(mensajeId, true)) {
-                is ApiResult.Success -> {
-                    _mensajeSeleccionado.value = result.data
-                }
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
+
+            when (val result = contactRepository.obtenerMensajePorId(userId, roleId, mensajeId, true)) {
+                is ApiResult.Success -> _mensajeSeleccionado.value = result.data
                 is ApiResult.Error -> {
                     _errorMessage.value = result.message
                     _mensajeSeleccionado.value = null
                 }
-                else -> {
-                    _errorMessage.value = "Error al cargar mensaje"
-                }
+                else -> _errorMessage.value = "Error al cargar mensaje"
             }
 
             _isLoading.value = false
         }
     }
 
-    // ==================== ADMINISTRACIÓN ====================
-
-    /**
-     * Actualizar estado de mensaje (admin)
-     */
     fun actualizarEstado(mensajeId: Long, nuevoEstado: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
 
-            when (val result = contactRepository.actualizarEstado(mensajeId, nuevoEstado)) {
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
+
+            when (val result = contactRepository.actualizarEstado(userId, roleId, mensajeId, nuevoEstado)) {
                 is ApiResult.Success -> {
                     _successMessage.value = "Estado actualizado a $nuevoEstado"
-                    // Actualizar en la lista
-                    _mensajes.update { mensajes ->
-                        mensajes.map { mensaje ->
-                            if (mensaje.id == mensajeId) {
-                                result.data
-                            } else {
-                                mensaje
-                            }
-                        }
-                    }
-                    // Actualizar seleccionado si aplica
-                    if (_mensajeSeleccionado.value?.id == mensajeId) {
-                        _mensajeSeleccionado.value = result.data
-                    }
+                    _mensajes.update { mensajes -> mensajes.map { if (it.id == mensajeId) result.data else it } }
+                    if (_mensajeSeleccionado.value?.id == mensajeId) _mensajeSeleccionado.value = result.data
                 }
-                is ApiResult.Error -> {
-                    _errorMessage.value = result.message
-                }
-                else -> {
-                    _errorMessage.value = "Error al actualizar estado"
-                }
+                is ApiResult.Error -> _errorMessage.value = result.message
+                else -> _errorMessage.value = "Error al actualizar estado"
             }
 
             _isLoading.value = false
         }
     }
 
-    /**
-     * Responder mensaje (admin)
-     */
     fun responderMensaje(
         mensajeId: Long,
         respuesta: String,
@@ -314,97 +256,62 @@ class ContactViewModel(
             _isLoading.value = true
             _errorMessage.value = null
 
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
+
             when (val result = contactRepository.responderMensaje(
-                mensajeId = mensajeId,
-                respuesta = respuesta,
-                respondidoPor = respondidoPor,
-                nuevoEstado = nuevoEstado
+                userId, roleId, mensajeId, respuesta, respondidoPor, nuevoEstado
             )) {
                 is ApiResult.Success -> {
                     _successMessage.value = "Respuesta enviada exitosamente"
-                    // Actualizar en la lista
-                    _mensajes.update { mensajes ->
-                        mensajes.map { mensaje ->
-                            if (mensaje.id == mensajeId) {
-                                result.data
-                            } else {
-                                mensaje
-                            }
-                        }
-                    }
-                    // Actualizar seleccionado
+                    _mensajes.update { mensajes -> mensajes.map { if (it.id == mensajeId) result.data else it } }
                     _mensajeSeleccionado.value = result.data
                 }
-                is ApiResult.Error -> {
-                    _errorMessage.value = result.message
-                }
-                else -> {
-                    _errorMessage.value = "Error al enviar respuesta"
-                }
+                is ApiResult.Error -> _errorMessage.value = result.message
+                else -> _errorMessage.value = "Error al enviar respuesta"
             }
 
             _isLoading.value = false
         }
     }
 
-    /**
-     * Eliminar mensaje (admin)
-     */
     fun eliminarMensaje(mensajeId: Long, adminId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
 
-            when (val result = contactRepository.eliminarMensaje(mensajeId, adminId)) {
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
+
+            when (val result = contactRepository.eliminarMensaje(userId, roleId, mensajeId, adminId)) {
                 is ApiResult.Success -> {
                     _successMessage.value = "Mensaje eliminado exitosamente"
-                    // Remover de la lista
-                    _mensajes.update { mensajes ->
-                        mensajes.filter { it.id != mensajeId }
-                    }
-                    // Limpiar seleccionado si aplica
-                    if (_mensajeSeleccionado.value?.id == mensajeId) {
-                        _mensajeSeleccionado.value = null
-                    }
+                    _mensajes.update { it.filter { m -> m.id != mensajeId } }
+                    if (_mensajeSeleccionado.value?.id == mensajeId) _mensajeSeleccionado.value = null
                 }
-                is ApiResult.Error -> {
-                    _errorMessage.value = result.message
-                }
-                else -> {
-                    _errorMessage.value = "Error al eliminar mensaje"
-                }
+                is ApiResult.Error -> _errorMessage.value = result.message
+                else -> _errorMessage.value = "Error al eliminar mensaje"
             }
 
             _isLoading.value = false
         }
     }
 
-    // ==================== ESTADÍSTICAS ====================
-
-    /**
-     * Cargar estadísticas de mensajes
-     */
     fun cargarEstadisticas() {
         viewModelScope.launch {
-            when (val result = contactRepository.obtenerEstadisticas()) {
-                is ApiResult.Success -> {
-                    _estadisticas.value = result.data
-                }
-                is ApiResult.Error -> {
-                    _estadisticas.value = emptyMap()
-                }
-                else -> {
-                    _estadisticas.value = emptyMap()
-                }
+            val prefs = userPreferences.first()
+            val userId = prefs.userId
+            val roleId = prefs.userRole
+
+            when (val result = contactRepository.obtenerEstadisticas(userId, roleId)) {
+                is ApiResult.Success -> _estadisticas.value = result.data
+                else -> _estadisticas.value = emptyMap()
             }
         }
     }
 
-    // ==================== VALIDACIONES ====================
-
-    /**
-     * Validar email
-     */
     fun validarEmail(email: String): Pair<Boolean, String?> {
         val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$".toRegex()
         return when {
@@ -414,9 +321,6 @@ class ContactViewModel(
         }
     }
 
-    /**
-     * Validar longitud de mensaje
-     */
     fun validarMensaje(mensaje: String): Pair<Boolean, String?> {
         return when {
             mensaje.isBlank() -> false to "El mensaje es obligatorio"
@@ -426,9 +330,6 @@ class ContactViewModel(
         }
     }
 
-    /**
-     * Validar longitud de asunto
-     */
     fun validarAsunto(asunto: String): Pair<Boolean, String?> {
         return when {
             asunto.isBlank() -> false to "El asunto es obligatorio"
@@ -437,34 +338,12 @@ class ContactViewModel(
         }
     }
 
-    // ==================== HELPERS ====================
-
-    /**
-     * Limpiar mensajes de error/éxito
-     */
     fun clearMessages() {
         _errorMessage.value = null
         _successMessage.value = null
     }
 
-    /**
-     * Obtener cantidad de mensajes pendientes
-     */
-    fun getMensajesPendientes(): Int {
-        return _mensajes.value.count { it.estado == "PENDIENTE" }
-    }
-
-    /**
-     * Obtener cantidad de mensajes sin responder
-     */
-    fun getMensajesSinResponder(): Int {
-        return _mensajes.value.count { it.respuesta == null }
-    }
-
-    /**
-     * Limpiar selección de mensaje
-     */
-    fun limpiarMensajeSeleccionado() {
-        _mensajeSeleccionado.value = null
-    }
+    fun getMensajesPendientes(): Int = _mensajes.value.count { it.estado == "PENDIENTE" }
+    fun getMensajesSinResponder(): Int = _mensajes.value.count { it.respuesta == null }
+    fun limpiarMensajeSeleccionado() { _mensajeSeleccionado.value = null }
 }

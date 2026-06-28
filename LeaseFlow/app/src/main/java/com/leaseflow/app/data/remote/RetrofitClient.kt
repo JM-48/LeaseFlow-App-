@@ -10,6 +10,7 @@ import com.google.gson.JsonPrimitive
 import com.google.gson.JsonSerializationContext
 import com.google.gson.JsonSerializer
 import com.google.gson.JsonSyntaxException
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Response
@@ -41,6 +42,28 @@ object RetrofitClient {
     private const val BASE_URL_REVIEW_SERVICE =
         "https://reviewservice.calmbeach-1addaf50.brazilsouth.azurecontainerapps.io/"
 
+    // ==================== CLAVE DE SEGURIDAD (Capa 1) ====================
+    // Misma clave que usan los 6 microservicios y el frontend web.
+    // Bloquea acceso directo por URL — el ApiKeyInterceptor del backend
+    // exige este header en todos los endpoints /api/**
+    private const val APP_CLIENT_KEY = "rentify-leaseflow-dev-key-2026"
+    private const val APP_CLIENT_HEADER = "X-App-Client"
+
+    // ==================== INTERCEPTOR X-App-Client ====================
+
+    /**
+     * Interceptor OkHttp que agrega X-App-Client a TODAS las requests.
+     * Equivalente al getAuthHeaders() del frontend web (apiConfig.ts).
+     * No necesita userId porque es la capa 1 (identidad de cliente, no de usuario).
+     */
+    private val appClientInterceptor = Interceptor { chain ->
+        val request = chain.request()
+            .newBuilder()
+            .header(APP_CLIENT_HEADER, APP_CLIENT_KEY)
+            .build()
+        chain.proceed(request)
+    }
+
     // ==================== CONFIGURACION DE OKHTTP ====================
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -48,6 +71,7 @@ object RetrofitClient {
     }
 
     private val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor(appClientInterceptor)   // <- Capa 1: X-App-Client en todas las requests
         .addInterceptor(loggingInterceptor)
         .connectTimeout(360, TimeUnit.SECONDS)
         .readTimeout(360, TimeUnit.SECONDS)
@@ -56,10 +80,6 @@ object RetrofitClient {
 
     // ==================== DESERIALIZADOR DE FECHAS ====================
 
-    /**
-     * Deserializador personalizado para manejar multiples formatos de fecha
-     * Soporta: ISO 8601 con T, ISO 8601 con espacio, solo fecha
-     */
     private class DateDeserializer : JsonDeserializer<Date>, JsonSerializer<Date> {
 
         private val dateFormats = listOf(
@@ -79,24 +99,14 @@ object RetrofitClient {
             context: JsonDeserializationContext?
         ): Date? {
             if (json == null || json.isJsonNull) return null
-
             val dateString = json.asString
             if (dateString.isNullOrBlank()) return null
-
             for (format in dateFormats) {
-                try {
-                    return format.parse(dateString)
-                } catch (e: Exception) {
-                    // Intentar siguiente formato
-                }
+                try { return format.parse(dateString) } catch (e: Exception) { }
             }
-
-            // Si ninguno funciona, intentar parsear como timestamp
-            try {
-                return Date(dateString.toLong())
-            } catch (e: Exception) {
+            return try { Date(dateString.toLong()) } catch (e: Exception) {
                 android.util.Log.w("DateDeserializer", "No se pudo parsear fecha: $dateString")
-                return null
+                null
             }
         }
 
@@ -156,9 +166,8 @@ object RetrofitClient {
     }
 }
 
-/**
- * Clase helper para encapsular resultados de las llamadas API
- */
+// ==================== SEALED CLASS ApiResult ====================
+
 sealed class ApiResult<out T> {
     data class Success<T>(val data: T) : ApiResult<T>()
     data class Error(
@@ -169,13 +178,11 @@ sealed class ApiResult<out T> {
     object Loading : ApiResult<Nothing>()
 }
 
-/**
- * Extension para simplificar el manejo de respuestas de Retrofit
- */
+// ==================== EXTENSION safeApiCall ====================
+
 suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
     return try {
         val response = apiCall()
-
         if (response.isSuccessful) {
             response.body()?.let {
                 ApiResult.Success(it)
@@ -186,30 +193,20 @@ suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
         } else {
             val errorBody = response.errorBody()?.string()
             val errorResponse = parseErrorResponse(errorBody)
-
             val message = errorResponse?.getUserFriendlyMessage()
                 ?: errorBody
                 ?: "Error ${response.code()}: ${response.message()}"
-
-            ApiResult.Error(
-                message = message,
-                code = response.code(),
-                errorResponse = errorResponse
-            )
+            ApiResult.Error(message = message, code = response.code(), errorResponse = errorResponse)
         }
     } catch (e: Exception) {
-        ApiResult.Error(
-            message = getExceptionMessage(e)
-        )
+        ApiResult.Error(message = getExceptionMessage(e))
     }
 }
 
 private fun parseErrorResponse(errorBody: String?): UserServiceErrorResponse? {
     if (errorBody.isNullOrBlank()) return null
-
     return try {
-        val gson = GsonBuilder().create()
-        gson.fromJson(errorBody, UserServiceErrorResponse::class.java)
+        GsonBuilder().create().fromJson(errorBody, UserServiceErrorResponse::class.java)
     } catch (e: JsonSyntaxException) {
         android.util.Log.w("RetrofitClient", "No se pudo parsear ErrorResponse: ${e.message}")
         null
@@ -218,19 +215,10 @@ private fun parseErrorResponse(errorBody: String?): UserServiceErrorResponse? {
 
 private fun getExceptionMessage(e: Exception): String {
     return when {
-        e is java.net.UnknownHostException ->
-            "Sin conexion a internet. Verifica tu conexion."
-
-        e is java.net.SocketTimeoutException ->
-            "Tiempo de espera agotado. El servidor no responde."
-
-        e is java.net.ConnectException ->
-            "No se pudo conectar al servidor. Verifica que este en ejecucion."
-
-        e is javax.net.ssl.SSLException ->
-            "Error de seguridad en la conexion."
-
-        else ->
-            e.message ?: "Error de conexion desconocido"
+        e is java.net.UnknownHostException -> "Sin conexion a internet. Verifica tu conexion."
+        e is java.net.SocketTimeoutException -> "Tiempo de espera agotado. El servidor no responde."
+        e is java.net.ConnectException -> "No se pudo conectar al servidor. Verifica que este en ejecucion."
+        e is javax.net.ssl.SSLException -> "Error de seguridad en la conexion."
+        else -> e.message ?: "Error de conexion desconocido"
     }
 }
