@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.leaseflow.app.data.local.dao.CatalogDao
 import com.leaseflow.app.data.local.dao.PropiedadDao
 import com.leaseflow.app.data.local.entities.PropiedadEntity
-import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.PropertyRemoteDTO
 import com.leaseflow.app.data.repository.ApplicationRemoteRepository
@@ -31,7 +31,7 @@ class MisPropiedadesViewModel(
     private val catalogDao: CatalogDao,
     private val propertyRepository: PropertyRemoteRepository,
     private val applicationRepository: ApplicationRemoteRepository,
-    private val userPreferences: Flow<UserPreferences>
+    private val userPreferences: Flow<UserSessionData>
 ) : ViewModel() {
 
     companion object {
@@ -68,7 +68,7 @@ class MisPropiedadesViewModel(
                 when (val result = propertyRepository.listarPropiedadesPorUsuario(
                     userId = userId,
                     roleId = roleId,
-                    usuarioId = propietarioId,
+                    propietarioId = propietarioId,
                     includeDetails = true
                 )) {
                     is ApiResult.Success -> {
@@ -79,7 +79,7 @@ class MisPropiedadesViewModel(
                         result.data.forEach { dto ->
                             val propId = dto.id
                             if (propId != null) {
-                                when (val solResult = applicationRepository.obtenerSolicitudesPorPropiedad(propId)) {
+                                when (val solResult = applicationRepository.obtenerSolicitudesPorPropiedad(userId, roleId, propId)) {
                                     is ApiResult.Success -> {
                                         val arrendada = solResult.data.any { s ->
                                             s.estado?.uppercase() == "ACEPTADA" || s.estado?.uppercase() == "APROBADA"

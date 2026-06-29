@@ -7,7 +7,7 @@ import com.leaseflow.app.data.local.dao.SolicitudDao
 import com.leaseflow.app.data.local.dao.PropiedadDao
 import com.leaseflow.app.data.local.dao.CatalogDao
 import com.leaseflow.app.data.local.entities.SolicitudEntity
-import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.SolicitudArriendoDTO
 import com.leaseflow.app.data.repository.ApplicationRemoteRepository
@@ -37,7 +37,7 @@ data class SolicitudConDatos(
 )
 
 /**
- * ViewModel para gestión de solicitudes
+ * ViewModel para gestion de solicitudes
  */
 class SolicitudesViewModel(
     private val solicitudDao: SolicitudDao,
@@ -45,7 +45,7 @@ class SolicitudesViewModel(
     private val catalogDao: CatalogDao,
     private val remoteRepository: ApplicationRemoteRepository,
     private val propertyRepository: PropertyRemoteRepository? = null,
-    private val userPreferences: Flow<UserPreferences>
+    private val userPreferences: Flow<UserSessionData>
 ) : ViewModel() {
 
     companion object {
@@ -153,9 +153,9 @@ class SolicitudesViewModel(
                                 when (val propResult = propertyRepository.obtenerPropiedadPorId(propId)) {
                                     is ApiResult.Success -> {
                                         val propReal = propResult.data
-                                        val soyElDueño = (propReal.propietarioId == propietarioId)
+                                        val soyElDueno = (propReal.propietarioId == propietarioId)
 
-                                        if (soyElDueño) {
+                                        if (soyElDueno) {
                                             solicitudEnriquecida = solicitudEnriquecida.copy(
                                                 tituloPropiedad = propReal.titulo ?: "Propiedad $propId",
                                                 codigoPropiedad = propReal.codigo,
@@ -327,7 +327,7 @@ class SolicitudesViewModel(
     }
 
     /**
-     * Actualizar estado dinámico
+     * Actualizar estado dinamico
      */
     private fun actualizarEstado(solicitudId: Long, nuevoEstado: String) {
         viewModelScope.launch {
@@ -341,7 +341,7 @@ class SolicitudesViewModel(
 
                 when (val result = remoteRepository.actualizarEstadoSolicitud(userId, roleId, solicitudId, nuevoEstado)) {
                     is ApiResult.Success -> {
-                        _successMsg.value = "Solicitud ${nuevoEstado.lowercase()} con éxito"
+                        _successMsg.value = "Solicitud ${nuevoEstado.lowercase()} con exito"
                         ultimoModoCargado?.invoke() ?: cargarTodasSolicitudes()
                     }
                     is ApiResult.Error -> {

@@ -3,7 +3,7 @@ package com.leaseflow.app.ui.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.*
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
@@ -16,10 +16,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import java.io.File
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 
 class AgregarPropiedadViewModel(
     private val propertyRepository: PropertyRemoteRepository,
-    private val userPreferences: Flow<UserPreferences>
+    private val userPreferences: Flow<UserSessionData>
 ) : ViewModel() {
 
     companion object {
@@ -66,7 +69,7 @@ class AgregarPropiedadViewModel(
         cargarCatalogos()
     }
 
-    // Catálogos — lecturas públicas, sin headers de identidad
+    // Catalogos; lecturas publicas, sin headers de identidad
     fun cargarCatalogos() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -124,14 +127,14 @@ class AgregarPropiedadViewModel(
             _comunasFiltradas.value = _comunas.value.filter { it.regionId == regionId }
             Log.d(TAG, "Comunas filtradas: ${_comunasFiltradas.value.size}")
             if (_comunasFiltradas.value.isEmpty()) {
-                _errorMsg.value = "No se encontraron comunas para esta región."
+                _errorMsg.value = "No se encontraron comunas para esta region."
             } else {
                 _errorMsg.value = null
             }
         }
     }
 
-    // Escritura — requiere headers
+    // Escritura â€” requiere headers
     fun crearPropiedad(
         titulo: String,
         precioMensual: Double,
@@ -153,11 +156,7 @@ class AgregarPropiedadViewModel(
 
             try {
                 val codigoGenerado = generarCodigo(tipoId)
-                Log.d(TAG, "Creando propiedad: codigo=$codigoGenerado, titulo=$titulo")
-
-                when (val result = propertyRepository.crearPropiedad(
-                    userId = userId,
-                    roleId = roleId,
+                val propiedad = PropertyRemoteDTO(
                     codigo = codigoGenerado,
                     titulo = titulo,
                     precioMensual = precioMensual,
@@ -170,6 +169,13 @@ class AgregarPropiedadViewModel(
                     tipoId = tipoId,
                     comunaId = comunaId,
                     propietarioId = propietarioId
+                )
+                Log.d(TAG, "Creando propiedad: codigo=$codigoGenerado, titulo=$titulo")
+
+                when (val result = propertyRepository.crearPropiedad(
+                    userId = userId,
+                    roleId = roleId,
+                    propiedad = propiedad
                 )) {
                     is ApiResult.Success -> {
                         Log.d(TAG, "Propiedad creada: id=${result.data.id}")
@@ -217,8 +223,10 @@ class AgregarPropiedadViewModel(
 
             try {
                 Log.d(TAG, "Subiendo foto: propiedad=$propiedadId, archivo=${file.name}")
+                val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
+                val filePart = MultipartBody.Part.createFormData("file", file.name, requestBody)
 
-                when (val result = propertyRepository.subirFoto(userId, roleId, propiedadId, file)) {
+                when (val result = propertyRepository.subirFoto(userId, roleId, propiedadId, filePart)) {
                     is ApiResult.Success -> {
                         Log.d(TAG, "Foto subida: id=${result.data.id}")
                         _fotosSubidas.value = _fotosSubidas.value + result.data

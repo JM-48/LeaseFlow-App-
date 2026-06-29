@@ -1,10 +1,10 @@
-package com.leaseflow.app.ui.viewmodel
+﻿package com.leaseflow.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.leaseflow.app.data.local.dao.CatalogDao
 import com.leaseflow.app.data.local.dao.PropiedadDao
-import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.repository.ApplicationRemoteRepository
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +14,7 @@ class MisPropiedadesViewModelFactory(
     private val catalogDao: CatalogDao,
     private val propertyRepository: PropertyRemoteRepository,
     private val applicationRepository: ApplicationRemoteRepository,
-    private val userPreferences: Flow<UserPreferences>
+    private val userPreferences: Flow<UserSessionData>
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")

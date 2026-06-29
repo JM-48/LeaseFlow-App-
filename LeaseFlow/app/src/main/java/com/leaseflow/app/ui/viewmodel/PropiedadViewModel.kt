@@ -85,8 +85,8 @@ class PropiedadViewModel(
                 catalogosJob.join()
                 when (val result = remoteRepository.listarTodasPropiedades(includeDetails = false)) {
                     is ApiResult.Success -> {
-                        Log.d(TAG, "Propiedades cargadas: ${result.data.size}")
-                        guardarYActualizarLocal(result.data)
+                        Log.d(TAG, "Propiedades cargadas: ${result.data.content.size}")
+                        guardarYActualizarLocal(result.data.content)
                     }
                     is ApiResult.Error -> {
                         Log.e(TAG, "Error: ${result.message}")
@@ -115,41 +115,26 @@ class PropiedadViewModel(
             _errorMsg.value = null
 
             try {
-                when (val result = remoteRepository.eliminarPropiedad(propiedadId)) {
-                    is ApiResult.Success -> {
-                        Log.d(TAG, "Propiedad $propiedadId eliminada remotamente. Eliminando de BD local.")
-
-                        // CORRECCIÓN CLAVE: Pasar valores por defecto a todos los campos requeridos
-                        val entityToDelete = PropiedadEntity(
-                            id = propiedadId,
-                            codigo = "",
-                            titulo = "",
-                            precio_mensual = 0,
-                            divisa = "",
-                            m2 = 0.0,
-                            n_habit = 0,
-                            n_banos = 0,
-                            pet_friendly = false,
-                            direccion = "",
-                            fcreacion = 0L,
-                            estado_id = 0L,
-                            tipo_id = 0L,
-                            comuna_id = 0L,
-                            propietario_id = null,
-                            descripcion = null // Si 'descripcion' acepta null
-                        )
-
-                        // 1. Eliminar de la BD local
-                        propiedadDao.delete(entityToDelete)
-
-                        // 2. Forzar la recarga de la lista (refresca la vista del administrador)
-                        cargarPropiedadesCercanas()
-                    }
-                    is ApiResult.Error -> {
-                        _errorMsg.value = "Error al eliminar: ${result.message}"
-                    }
-                    else -> {}
-                }
+                val entityToDelete = PropiedadEntity(
+                    id = propiedadId,
+                    codigo = "",
+                    titulo = "",
+                    precio_mensual = 0,
+                    divisa = "",
+                    m2 = 0.0,
+                    n_habit = 0,
+                    n_banos = 0,
+                    pet_friendly = false,
+                    direccion = "",
+                    fcreacion = 0L,
+                    estado_id = 0L,
+                    tipo_id = 0L,
+                    comuna_id = 0L,
+                    propietario_id = null,
+                    descripcion = null
+                )
+                propiedadDao.delete(entityToDelete)
+                cargarPropiedadesCercanas()
             } catch (e: Exception) {
                 Log.e(TAG, "Excepcion al eliminar propiedad: ${e.message}")
                 _errorMsg.value = "Error de conexión al eliminar: ${e.message}"

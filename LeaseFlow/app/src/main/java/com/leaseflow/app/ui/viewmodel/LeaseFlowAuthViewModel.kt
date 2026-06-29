@@ -473,6 +473,8 @@ class LeaseFlowAuthViewModel(
                 )
 
                 val result = documentRepository.crearDocumento(
+                    userId = usuarioId,
+                    roleId = 3,
                     nombre = nombreDocumento,
                     usuarioId = usuarioId,
                     tipoDocId = tipo.id,

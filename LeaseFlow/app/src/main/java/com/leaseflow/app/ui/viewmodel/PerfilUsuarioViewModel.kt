@@ -1,4 +1,4 @@
-package com.leaseflow.app.ui.viewmodel
+﻿package com.leaseflow.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -6,7 +6,7 @@ import com.leaseflow.app.data.local.dao.UsuarioDao
 import com.leaseflow.app.data.local.dao.CatalogDao
 import com.leaseflow.app.data.local.dao.SolicitudDao
 import com.leaseflow.app.data.local.entities.UsuarioEntity
-import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.UsuarioUpdateRemoteDTO
 import com.leaseflow.app.data.repository.LeaseFlowUserRepository
@@ -23,7 +23,7 @@ class PerfilUsuarioViewModel(
     private val solicitudDao: SolicitudDao,
     private val userRemoteRepository: UserRemoteRepository,
     private val localUserRepository: LeaseFlowUserRepository,
-    private val userPreferences: Flow<UserPreferences>
+    private val userPreferences: Flow<UserSessionData>
 ) : ViewModel() {
 
     private val _usuario = MutableStateFlow<UsuarioEntity?>(null)

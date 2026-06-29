@@ -3,7 +3,7 @@ package com.leaseflow.app.ui.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.PropertyRemoteDTO
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 
 class GestionPropiedadesViewModel(
     private val propertyRepository: PropertyRemoteRepository,
-    private val userPreferences: Flow<UserPreferences>
+    private val userPreferences: Flow<UserSessionData>
 ) : ViewModel() {
 
     companion object {
@@ -48,7 +48,7 @@ class GestionPropiedadesViewModel(
         cargarPropiedades()
     }
 
-    // Lectura pública — no necesita headers de identidad
+    // Lectura pÃºblica â€” no necesita headers de identidad
     fun cargarPropiedades() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -57,8 +57,8 @@ class GestionPropiedadesViewModel(
                 Log.d(TAG, "Cargando todas las propiedades...")
                 when (val result = propertyRepository.listarTodasPropiedades(includeDetails = true)) {
                     is ApiResult.Success -> {
-                        Log.d(TAG, "Propiedades cargadas: ${result.data.size}")
-                        _propiedades.value = result.data
+                        Log.d(TAG, "Propiedades cargadas: ${result.data.content.size}")
+                        _propiedades.value = result.data.content
                         aplicarFiltro()
                     }
                     is ApiResult.Error -> {
@@ -86,7 +86,7 @@ class GestionPropiedadesViewModel(
         _propiedadesFiltradas.value = if (filtro.isNullOrEmpty()) _propiedades.value else _propiedades.value
     }
 
-    // Lectura pública
+    // Lectura pÃºblica
     fun seleccionarPropiedad(propiedadId: Long) {
         viewModelScope.launch {
             when (val result = propertyRepository.obtenerPropiedadPorId(propiedadId, includeDetails = true)) {

@@ -2,7 +2,7 @@ package com.leaseflow.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.MensajeContactoDTO
 import com.leaseflow.app.data.repository.ContactRemoteRepository
@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 class ContactViewModel(
     private val contactRepository: ContactRemoteRepository,
-    private val userPreferences: Flow<UserPreferences>
+    private val userPreferences: Flow<UserSessionData>
 ) : ViewModel() {
 
     private val _mensajes = MutableStateFlow<List<MensajeContactoDTO>>(emptyList())
@@ -36,7 +36,7 @@ class ContactViewModel(
     private val _successMessage = MutableStateFlow<String?>(null)
     val successMessage: StateFlow<String?> = _successMessage
 
-    // crearMensaje es público — no necesita userId/roleId
+    // crearMensaje es publico y no necesita userId/roleId
     fun crearMensaje(
         nombre: String,
         email: String,
@@ -316,7 +316,7 @@ class ContactViewModel(
         val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$".toRegex()
         return when {
             email.isBlank() -> false to "El email es obligatorio"
-            !email.matches(emailRegex) -> false to "El email no es válido"
+            !email.matches(emailRegex) -> false to "El email no es valido"
             else -> true to null
         }
     }

@@ -1,9 +1,9 @@
-package com.leaseflow.app.ui.viewmodel
+﻿package com.leaseflow.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.UsuarioDTO
 import com.leaseflow.app.data.repository.UserRepository
@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 
 class UserManagementViewModel(
     private val repository: UserRepository,
-    private val userPreferences: Flow<UserPreferences>
+    private val userPreferences: Flow<UserSessionData>
 ) : ViewModel() {
 
     private val _users = MutableStateFlow<List<UsuarioDTO>>(emptyList())
@@ -101,7 +101,7 @@ class UserManagementViewModel(
 
 class UserManagementViewModelFactory(
     private val repository: UserRepository,
-    private val userPreferences: Flow<UserPreferences>
+    private val userPreferences: Flow<UserSessionData>
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

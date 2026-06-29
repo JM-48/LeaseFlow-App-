@@ -48,6 +48,10 @@ object RetrofitClient {
     // exige este header en todos los endpoints /api/**
     private const val APP_CLIENT_KEY = "rentify-leaseflow-dev-key-2026"
     private const val APP_CLIENT_HEADER = "X-App-Client"
+    private const val AUTHORIZATION_HEADER = "Authorization"
+
+    @Volatile
+    private var authToken: String? = null
 
     // ==================== INTERCEPTOR X-App-Client ====================
 
@@ -57,10 +61,15 @@ object RetrofitClient {
      * No necesita userId porque es la capa 1 (identidad de cliente, no de usuario).
      */
     private val appClientInterceptor = Interceptor { chain ->
-        val request = chain.request()
+        val requestBuilder = chain.request()
             .newBuilder()
             .header(APP_CLIENT_HEADER, APP_CLIENT_KEY)
-            .build()
+
+        authToken?.takeIf { it.isNotBlank() }?.let { token ->
+            requestBuilder.header(AUTHORIZATION_HEADER, "Bearer $token")
+        }
+
+        val request = requestBuilder.build()
         chain.proceed(request)
     }
 
@@ -137,6 +146,10 @@ object RetrofitClient {
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
+    }
+
+    fun setAuthToken(token: String?) {
+        authToken = token?.takeIf { it.isNotBlank() }
     }
 
     // ==================== INSTANCIAS DE APIS ====================

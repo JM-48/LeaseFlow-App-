@@ -60,7 +60,8 @@ fun SolicitudDetalleScreen(
         propiedadDao = database.propiedadDao(),
         catalogDao = database.catalogDao(),
         remoteRepository = applicationRepository,
-        propertyRepository = propertyRepository
+        propertyRepository = propertyRepository,
+        userPreferences = userPreferences.data
     )
 
     val viewModel: SolicitudesViewModel = viewModel(factory = viewModelFactory)
@@ -95,7 +96,7 @@ fun SolicitudDetalleScreen(
         if (rolId != ROL_ARRIENDATARIO) {
             val solicitanteId = solicitudSeleccionada?.solicitud?.usuarios_id ?: return@LaunchedEffect
             docsLoading = true
-            docsAprobados = when (val result = documentRepository.verificarDocumentosAprobados(solicitanteId)) {
+            docsAprobados = when (val result = documentRepository.verificarDocumentosAprobados(currentUserId ?: return@LaunchedEffect, rolId, solicitanteId)) {
                 is ApiResult.Success -> result.data
                 else -> null
             }

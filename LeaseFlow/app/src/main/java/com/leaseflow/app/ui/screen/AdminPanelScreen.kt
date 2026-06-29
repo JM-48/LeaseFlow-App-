@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.leaseflow.app.data.local.LeaseFlowDatabase
+import com.leaseflow.app.data.local.storage.UserPreferences
 import com.leaseflow.app.data.remote.RetrofitClient
 import com.leaseflow.app.data.repository.ApplicationRemoteRepository
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
@@ -40,6 +41,7 @@ fun AdminPanelScreen(
 ) {
     val context = LocalContext.current
     val db = LeaseFlowDatabase.getInstance(context)
+    val userPrefsFlow = remember { UserPreferences(context).data }
     val prefs = context.getSharedPreferences("LeaseFlowPrefs", 0)
     val currentRol = prefs.getLong("currentUserRolId", -1L)
     val isAdmin = currentRol == 1L
@@ -57,7 +59,8 @@ fun AdminPanelScreen(
         factory = AdminPanelViewModelFactory(
             userRepository,
             propertyRepository,
-            applicationRepository
+            applicationRepository,
+            userPrefsFlow
         )
     )
 
@@ -97,7 +100,7 @@ fun AdminPanelScreen(
                 // Inyectar el ViewModel para la gestión de usuarios
                 val userRepository = UserRepository(RetrofitClient.userServiceApi)
                 val userManagementViewModel: UserManagementViewModel = viewModel(
-                    factory = UserManagementViewModelFactory(userRepository)
+                    factory = UserManagementViewModelFactory(userRepository, userPrefsFlow)
                 )
 
                 val users by userManagementViewModel.users.collectAsStateWithLifecycle()

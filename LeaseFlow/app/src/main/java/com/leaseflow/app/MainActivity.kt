@@ -6,11 +6,14 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.leaseflow.app.data.local.LeaseFlowDatabase
 import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.remote.RetrofitClient
 import com.leaseflow.app.data.repository.ApplicationRemoteRepository
 import com.leaseflow.app.data.repository.DocumentRemoteRepository
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
@@ -36,6 +39,11 @@ class MainActivity : ComponentActivity() {
                     // Flow de preferencias del usuario — fuente única para todas las factories
                     val userPrefs = UserPreferences(applicationContext)
                     val userPreferencesFlow = userPrefs.data
+                    val currentSession = userPreferencesFlow.collectAsStateWithLifecycle(initialValue = null).value
+
+                    LaunchedEffect(currentSession?.authToken) {
+                        RetrofitClient.setAuthToken(currentSession?.authToken)
+                    }
 
                     // ==================== REPOSITORIOS ====================
 

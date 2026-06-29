@@ -1,9 +1,9 @@
-package com.leaseflow.app.ui.viewmodel
+﻿package com.leaseflow.app.ui.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.DocumentoRemoteDTO
 import com.leaseflow.app.data.remote.dto.TipoDocumentoRemoteDTO
@@ -26,7 +26,7 @@ data class MisDocumentosUiState(
 
 class MisDocumentosViewModel(
     private val documentRepository: DocumentRemoteRepository,
-    private val userPreferences: Flow<UserPreferences>
+    private val userPreferences: Flow<UserSessionData>
 ) : ViewModel() {
 
     companion object {

@@ -20,6 +20,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.leaseflow.app.data.local.LeaseFlowDatabase
 import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.RetrofitClient
 import com.leaseflow.app.data.remote.dto.UsuarioDTO
 import com.leaseflow.app.data.repository.ApplicationRemoteRepository
@@ -44,7 +45,7 @@ fun AppNavGraph(
     solicitudesViewModel: SolicitudesViewModel,
     perfilViewModel: PerfilUsuarioViewModel,
     reviewViewModel: ReviewViewModel,
-    userPreferencesFlow: Flow<UserPreferences>  // ← NUEVO: recibido desde MainActivity
+    userPreferencesFlow: Flow<UserSessionData>  // â† NUEVO: recibido desde MainActivity
 ) {
     val userPrefs = remember { UserPreferences(context) }
     val scope = rememberCoroutineScope()
@@ -65,7 +66,7 @@ fun AppNavGraph(
         )
     }
 
-    // Funciones de navegación
+    // Funciones de navegaciÃ³n
     val goWelcome: () -> Unit = {
         navController.navigate(Routes.WELCOME) {
             popUpTo(0) { inclusive = true }
@@ -259,7 +260,7 @@ fun AppNavGraph(
                             catalogDao = database.catalogDao(),
                             remoteRepository = applicationRepository,
                             propertyRepository = propertyRepository,
-                            userPreferences = userPreferencesFlow  // ← AGREGADO
+                            userPreferences = userPreferencesFlow  // â† AGREGADO
                         )
                         SolicitudesScreen(
                             userPreferences = userPrefs,
@@ -277,7 +278,7 @@ fun AppNavGraph(
                             catalogDao = database.catalogDao(),
                             remoteRepository = applicationRepository,
                             propertyRepository = propertyRepository,
-                            userPreferences = userPreferencesFlow  // ← AGREGADO
+                            userPreferences = userPreferencesFlow  // â† AGREGADO
                         )
                         SolicitudesScreen(
                             userPreferences = userPrefs,
@@ -295,7 +296,7 @@ fun AppNavGraph(
                             catalogDao = database.catalogDao(),
                             remoteRepository = applicationRepository,
                             propertyRepository = propertyRepository,
-                            userPreferences = userPreferencesFlow  // ← AGREGADO
+                            userPreferences = userPreferencesFlow  // â† AGREGADO
                         )
                         SolicitudesScreen(
                             userPreferences = userPrefs,
@@ -311,7 +312,7 @@ fun AppNavGraph(
                         val misDocumentosViewModel: MisDocumentosViewModel = viewModel(
                             factory = MisDocumentosViewModelFactory(
                                 documentRepository = documentRepository,
-                                userPreferences = userPreferencesFlow  // ← AGREGADO
+                                userPreferences = userPreferencesFlow  // â† AGREGADO
                             )
                         )
                         MisDocumentosScreen(
@@ -344,7 +345,7 @@ fun AppNavGraph(
                         val userManagementViewModel: UserManagementViewModel = viewModel(
                             factory = UserManagementViewModelFactory(
                                 repository = userRepository,
-                                userPreferences = userPreferencesFlow  // ← AGREGADO
+                                userPreferences = userPreferencesFlow  // â† AGREGADO
                             )
                         )
 
@@ -365,9 +366,10 @@ fun AppNavGraph(
 
                     // GESTION PROPIEDADES
                     composable(Routes.GESTION_PROPIEDADES) {
-                        val gestionPropiedadesViewModelFactory = GestionPropiedadesViewModelFactory(
-                            propertyRepository = propertyRepository,
-                            userPreferences = userPreferencesFlow  // ← AGREGADO
+                        val gestionPropiedadesViewModelFactory = PropiedadViewModelFactory(
+                            propiedadDao = database.propiedadDao(),
+                            catalogDao = database.catalogDao(),
+                            remoteRepository = propertyRepository
                         )
                         GestionPropiedadesScreen(
                             onBack = { navController.popBackStack() },
@@ -381,8 +383,8 @@ fun AppNavGraph(
                         val documentRepository = DocumentRemoteRepository()
                         val gestionDocumentosViewModel: GestionDocumentosViewModel = viewModel(
                             factory = GestionDocumentosViewModelFactory(
-                                repo = documentRepository,
-                                userPreferences = userPreferencesFlow  // ← AGREGADO
+                                documentRepository = documentRepository,
+                                userPreferences = userPreferencesFlow  // â† AGREGADO
                             )
                         )
                         GestionDocumentosScreen(
@@ -395,7 +397,7 @@ fun AppNavGraph(
                     composable(Routes.AGREGAR_PROPIEDAD) {
                         val agregarPropiedadViewModelFactory = AgregarPropiedadViewModelFactory(
                             propertyRepository = propertyRepository,
-                            userPreferences = userPreferencesFlow  // ← AGREGADO
+                            userPreferences = userPreferencesFlow  // â† AGREGADO
                         )
                         AgregarPropiedadScreen(
                             userPreferences = userPrefs,
@@ -412,7 +414,7 @@ fun AppNavGraph(
                             catalogDao = database.catalogDao(),
                             propertyRepository = propertyRepository,
                             applicationRepository = applicationRepository,
-                            userPreferences = userPreferencesFlow  // ← AGREGADO
+                            userPreferences = userPreferencesFlow  // â† AGREGADO
                         )
                         MisPropiedadesScreen(
                             userPreferences = userPrefs,
@@ -428,7 +430,7 @@ fun AppNavGraph(
                         val contactViewModel: ContactViewModel = viewModel(
                             factory = ContactViewModelFactory(
                                 contactRepository = contactRepository,
-                                userPreferences = userPreferencesFlow  // ← AGREGADO
+                                userPreferences = userPreferencesFlow  // â† AGREGADO
                             )
                         )
                         ContactScreen(
@@ -443,7 +445,7 @@ fun AppNavGraph(
                         val contactViewModel: ContactViewModel = viewModel(
                             factory = ContactViewModelFactory(
                                 contactRepository = contactRepository,
-                                userPreferences = userPreferencesFlow  // ← AGREGADO
+                                userPreferences = userPreferencesFlow  // â† AGREGADO
                             )
                         )
 

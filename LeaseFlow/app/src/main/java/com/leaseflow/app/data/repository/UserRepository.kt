@@ -40,8 +40,8 @@ class UserRepository(private val api: UserServiceApi) {
     suspend fun getUsers(userId: Long, roleId: Int): ApiResult<List<UsuarioDTO>> {
         return when (val result = safeApiCall {
             api.obtenerTodosUsuarios(
-                usuarioId = userId.toString(),
-                rolId = roleId.toString(),
+                usuarioId = userId,
+                rolId = roleId,
                 includeDetails = true
             )
         }) {
@@ -55,8 +55,8 @@ class UserRepository(private val api: UserServiceApi) {
         return when (val result = safeApiCall {
             api.obtenerUsuarioPorId(
                 id = targetUserId,
-                usuarioId = userId.toString(),
-                rolId = roleId.toString(),
+                usuarioId = userId,
+                rolId = roleId,
                 includeDetails = true
             )
         }) {
@@ -71,9 +71,9 @@ class UserRepository(private val api: UserServiceApi) {
         return when (val result = safeApiCall {
             api.actualizarUsuario(
                 id = targetUserId,
-                usuario = updateDTO,
-                usuarioId = userId.toString(),
-                rolId = roleId.toString()
+                usuarioId = userId,
+                rolId = roleId,
+                usuario = updateDTO
             )
         }) {
             is ApiResult.Success -> ApiResult.Success(result.data.toUsuarioDTO())
@@ -86,8 +86,8 @@ class UserRepository(private val api: UserServiceApi) {
         return try {
             val response = api.eliminarUsuario(
                 id = targetUserId,
-                usuarioId = userId.toString(),
-                rolId = roleId.toString()
+                usuarioId = userId,
+                rolId = roleId
             )
             if (response.isSuccessful) {
                 ApiResult.Success(Unit)
@@ -95,9 +95,9 @@ class UserRepository(private val api: UserServiceApi) {
                 val fallback = safeApiCall {
                     api.cambiarEstado(
                         id = targetUserId,
-                        estadoId = 2,
-                        usuarioId = userId.toString(),
-                        rolId = roleId.toString()
+                        usuarioId = userId,
+                        rolId = roleId,
+                        estadoId = 2
                     )
                 }
                 when (fallback) {
@@ -110,9 +110,9 @@ class UserRepository(private val api: UserServiceApi) {
             when (val fallback = safeApiCall {
                 api.cambiarEstado(
                     id = targetUserId,
-                    estadoId = 2,
-                    usuarioId = userId.toString(),
-                    rolId = roleId.toString()
+                    usuarioId = userId,
+                    rolId = roleId,
+                    estadoId = 2
                 )
             }) {
                 is ApiResult.Success -> ApiResult.Success(Unit)

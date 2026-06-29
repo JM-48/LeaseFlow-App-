@@ -2,7 +2,7 @@ package com.leaseflow.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.leaseflow.app.data.local.storage.UserPreferences
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.ResenaDTO
 import com.leaseflow.app.data.remote.dto.TipoResenaDTO
@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 
 class ReviewViewModel(
     private val reviewRepository: ReviewRemoteRepository,
-    private val userPreferences: Flow<UserPreferences>
+    private val userPreferences: Flow<UserSessionData>
 ) : ViewModel() {
 
     private val _resenas = MutableStateFlow<List<ResenaDTO>>(emptyList())
@@ -115,7 +115,7 @@ class ReviewViewModel(
         }
     }
 
-    // ==================== CARGAR RESENAS (LECTURAS PUBLICAS — sin headers) ====================
+    // ==================== CARGAR RESENAS (LECTURAS PUBLICAS â€” sin headers) ====================
 
     fun cargarResenasPorPropiedad(propiedadId: Long) {
         viewModelScope.launch {
@@ -282,6 +282,13 @@ class ReviewViewModel(
 
     fun getResenasActivas(): List<ResenaDTO> = _resenas.value
 
-    suspend fun puedeResenar(usuarioId: Long, propiedadId: Long): Boolean =
-        reviewRepository.puedeResenarPropiedad(usuarioId, propiedadId)
+    suspend fun puedeResenar(usuarioId: Long, propiedadId: Long): Boolean {
+        val session = userPreferences.first()
+        return reviewRepository.puedeResenarPropiedad(
+            userId = session.userId,
+            roleId = session.userRole,
+            targetUsuarioId = usuarioId,
+            propiedadId = propiedadId
+        )
+    }
 }

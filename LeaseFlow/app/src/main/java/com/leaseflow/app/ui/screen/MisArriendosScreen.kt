@@ -59,7 +59,9 @@ fun MisArriendosScreen(
     onVerPropiedad: (Long) -> Unit
 ) {
     val context = LocalContext.current
-    val userId by userPreferences.userId.collectAsStateWithLifecycle(initialValue = null)
+    val session by userPreferences.data.collectAsStateWithLifecycle(initialValue = null)
+    val userId = session?.userId?.takeIf { it > 0 }
+    val roleId = session?.userRole
 
     val database = remember { LeaseFlowDatabase.getInstance(context) }
     val applicationRepository = remember {
@@ -77,11 +79,11 @@ fun MisArriendosScreen(
     val numberFormat = remember { NumberFormat.getCurrencyInstance(Locale("es", "CL")) }
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
-    suspend fun cargar(uid: Long) {
+    suspend fun cargar(uid: Long, rolId: Int) {
         isLoading = true
         error = null
         registros = emptyList()
-        when (val result = applicationRepository.listarTodosRegistros(includeDetails = true)) {
+        when (val result = applicationRepository.listarTodosRegistros(uid, rolId, includeDetails = true)) {
             is ApiResult.Success -> {
                 registros = result.data
                     .filter { it.activo == true && it.solicitud?.usuarioId == uid }
@@ -95,7 +97,8 @@ fun MisArriendosScreen(
 
     LaunchedEffect(userId) {
         val uid = userId ?: return@LaunchedEffect
-        cargar(uid)
+        val rolId = roleId ?: return@LaunchedEffect
+        cargar(uid, rolId)
     }
 
     Scaffold(
@@ -111,7 +114,8 @@ fun MisArriendosScreen(
                     IconButton(
                         onClick = {
                             val uid = userId ?: return@IconButton
-                            scope.launch { cargar(uid) }
+                            val rolId = roleId ?: return@IconButton
+                            scope.launch { cargar(uid, rolId) }
                         }
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = "Actualizar")

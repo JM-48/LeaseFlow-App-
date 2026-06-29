@@ -12,6 +12,17 @@ import kotlinx.coroutines.flow.map
 
 val Context.dataStore by preferencesDataStore(name = "leaseflow_user_prefs")
 
+data class UserSessionData(
+    val isLoggedIn: Boolean = false,
+    val userId: Long = 0L,
+    val userEmail: String? = null,
+    val userName: String? = null,
+    val userRoleName: String? = null,
+    val userRole: Int = 3,
+    val isDuocVip: Boolean = false,
+    val authToken: String? = null
+)
+
 class UserPreferences(private val context: Context) {
 
     // ========== KEYS ==========
@@ -22,6 +33,7 @@ class UserPreferences(private val context: Context) {
     private val userRoleKey = stringPreferencesKey("user_role")
     private val userRoleIdKey = intPreferencesKey("user_role_id")
     private val isDuocVipKey = booleanPreferencesKey("is_duoc_vip")
+    private val authTokenKey = stringPreferencesKey("auth_token")
 
     // ========== SETTERS ==========
     suspend fun saveUserSession(
@@ -69,6 +81,16 @@ class UserPreferences(private val context: Context) {
         }
     }
 
+    suspend fun setAuthToken(token: String?) {
+        context.dataStore.edit { prefs ->
+            if (token.isNullOrBlank()) {
+                prefs.remove(authTokenKey)
+            } else {
+                prefs[authTokenKey] = token
+            }
+        }
+    }
+
     suspend fun setLoggedIn(value: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[isLoggedInKey] = value
@@ -106,4 +128,30 @@ class UserPreferences(private val context: Context) {
 
     val isDuocVip: Flow<Boolean> = context.dataStore.data
         .map { prefs -> prefs[isDuocVipKey] ?: false }
+
+    val authToken: Flow<String?> = context.dataStore.data
+        .map { prefs -> prefs[authTokenKey] }
+
+    val data: Flow<UserSessionData> = context.dataStore.data.map { prefs ->
+        val roleName = prefs[userRoleKey]
+        val roleId = prefs[userRoleIdKey] ?: roleName?.let { role ->
+            when (role.uppercase()) {
+                "ADMIN", "ADMINISTRADOR" -> 1
+                "PROPIETARIO" -> 2
+                "ARRIENDATARIO" -> 3
+                else -> 3
+            }
+        } ?: 3
+
+        UserSessionData(
+            isLoggedIn = prefs[isLoggedInKey] ?: false,
+            userId = prefs[userIdKey] ?: 0L,
+            userEmail = prefs[userEmailKey],
+            userName = prefs[userNameKey],
+            userRoleName = roleName,
+            userRole = roleId,
+            isDuocVip = prefs[isDuocVipKey] ?: false,
+            authToken = prefs[authTokenKey]
+        )
+    }
 }
