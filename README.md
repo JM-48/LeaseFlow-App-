@@ -1,235 +1,285 @@
-# LeaseFlow (App móvil Android)
+# LeaseFlow
 
-Aplicación móvil construida con **Kotlin + Jetpack Compose** para un flujo de arriendo digital. La app implementa navegación con Compose, manejo de estado con ViewModels (StateFlow), persistencia local con Room y consumo de microservicios vía Retrofit/OkHttp.
+Aplicacion movil Android para la gestion de arriendos, propiedades, solicitudes, documentos, contacto y resenas sobre una arquitectura de microservicios.
 
----
+El proyecto esta implementado con Kotlin + Jetpack Compose, usa MVVM con repositorios, cache local con Room y sesion persistida con DataStore.
 
-## Funcionalidades principales
+## Estado actual del proyecto
 
-- **Autenticación**: login y registro (con validaciones de email/RUT/teléfono/contraseña).
-- **Roles**: experiencia diferenciada para **Arrendatario**, **Propietario** y **Administrador**.
-- **Catálogo de propiedades**: listado, filtros y priorización por cercanía (si se concede ubicación).
-- **Detalle de propiedad**: información enriquecida y flujo para **crear solicitud de arriendo**.
-- **Solicitudes**: vista y gestión multi-rol (ver/crear/aprobar/rechazar según rol).
-- **Documentos**: carga/listado para usuario y gestión por admin (cambio de estado).
-- **Panel de administración**: gestión de usuarios/propiedades/documentos.
-- **Contacto**: envío y administración de mensajes.
-- **Reseñas**: endpoints y repositorio para reseñas/valoraciones (integración con Review Service).
+Estado validado en este repositorio:
+- El modulo Android se encuentra en `LeaseFlow/`.
+- La app compila correctamente en `debug`.
+- `compileDebugKotlin` y `assembleDebug` terminan exitosamente.
+- La integracion de red actual usa Azure Container Apps, no puertos locales por defecto.
+- La sesion del usuario fue unificada en `UserPreferences` con soporte para `authToken`.
+- El cliente HTTP envia `X-App-Client` en todas las requests y `Authorization: Bearer ...` cuando existe token.
+- La suite de tests existe, pero hoy no esta completamente alineada con las firmas actuales de produccion: `testDebugUnitTest` falla por tests desactualizados.
 
----
+## Funcionalidades implementadas
 
-## Stack tecnológico
+- Autenticacion y registro de usuarios.
+- Roles diferenciados para arrendatario, propietario y administrador.
+- Catalogo de propiedades con filtros y priorizacion por cercania cuando hay permisos de ubicacion.
+- Detalle de propiedad con creacion de solicitudes.
+- Gestion de solicitudes de arriendo con vistas por rol.
+- Gestion de documentos del usuario y flujo de revision administrativa.
+- Panel administrativo para usuarios, propiedades, documentos y contacto.
+- Formulario de contacto y vista de gestion de mensajes.
+- Resenas de propiedades y usuarios.
+- Persistencia local de catalogos y datos de apoyo con Room.
 
-**Android**
-- Kotlin (Gradle Kotlin DSL)
-- Jetpack Compose + Material 3
-- Navigation Compose
-- Lifecycle ViewModel + collectAsStateWithLifecycle
+## Stack tecnico
+
+Android y UI:
+- Kotlin 2.0.21
+- Jetpack Compose
+- Material 3
+- Navigation Compose 2.9.5
+- Lifecycle ViewModel + `collectAsStateWithLifecycle`
 - Coroutines
 
-**Datos y red**
-- Room (con KSP para el compiler)
-- DataStore (Preferences) para sesión de usuario
-- Retrofit + OkHttp + Gson (con interceptor de logging)
-- Coil (carga de imágenes)
+Datos y red:
+- Room 2.6.1 con KSP
+- DataStore Preferences
+- Retrofit 2.9.0
+- OkHttp 4.12.0
+- Gson 2.10.1
+- Coil 2.7.0
 
-**Servicios del dispositivo**
-- Ubicación: Google Play Services Location
-- Cámara + FileProvider (captura/selección y cache local)
-- Network Security Config habilitado para HTTP en desarrollo
+Servicios del dispositivo:
+- Google Play Services Location
+- Camara
+- FileProvider
 
-### Versiones relevantes (según Gradle)
+Configuracion Android:
+- AGP 8.13.1
+- Gradle 8.13
+- compileSdk 36
+- targetSdk 36
+- minSdk 24
+- JVM target 11
 
-- Android Gradle Plugin: 8.13.1
-- Gradle Wrapper: 8.13
-- Kotlin: 2.0.21
-- Compose BOM: 2024.09.00
-- compileSdk / targetSdk: 36
-- minSdk: 24
-- Room: 2.6.1 (KSP para `room-compiler`)
-- Navigation Compose: 2.9.5
+## Arquitectura
 
-### Testing
+El proyecto sigue un enfoque MVVM + Repository:
 
-- Unit tests: JUnit 4
-- Mocks: Mockito / Mockito-Kotlin
-- Coroutines Test
+- `ui/screen/`: pantallas Compose.
+- `ui/viewmodel/`: estado, validaciones, coordinacion de casos de uso y llamadas a repositorios.
+- `data/repository/`: integracion con microservicios y acceso a datos locales.
+- `data/local/`: Room, DAOs, entidades y almacenamiento de sesion.
+- `data/remote/`: APIs Retrofit, DTOs y cliente HTTP.
+- `domain/validation/`: validadores reutilizables del dominio.
 
----
-
-## Arquitectura (visión general)
-
-El proyecto sigue un enfoque **MVVM + Repository**:
-
-- **UI (Compose)**: pantallas y componentes reaccionan a `StateFlow`.
-- **ViewModels**: coordinan estado/validaciones y llaman a repositorios.
-- **Repositorios**:
-  - *Remotos* (Retrofit) para microservicios.
-  - *Locales* (Room/DAO) para cache/datos maestros y fallback offline.
-- **Persistencia de sesión**: DataStore guarda `userId`, `userRole`, etc.
+Flujo general:
 
 ```mermaid
 flowchart LR
-  UI[Compose Screens] -->|eventos| VM[ViewModels]
-  VM -->|StateFlow| UI
-
+  UI[Compose Screens] --> VM[ViewModels]
   VM --> REPO[Repositories]
-
-  REPO -->|Retrofit/OkHttp| API[Microservicios]
-  REPO -->|Room DAO| DB[(Room DB)]
-  VM -->|DataStore| PREFS[(UserPreferences)]
+  REPO --> API[Microservices]
+  REPO --> DB[(Room)]
+  VM --> PREFS[(DataStore)]
 ```
 
----
+## Seguridad y sesion
 
-## Estructura del proyecto
+La capa de red actual trabaja con tres mecanismos:
 
-Repositorio:
-- `README.md` (este archivo)
-- `LeaseFlow/` proyecto Android (Gradle)
+- `X-App-Client`: header global inyectado por `RetrofitClient` en todas las requests.
+- `Authorization: Bearer <token>`: se agrega automaticamente si `authToken` existe en `DataStore`.
+- `X-Usuario-Id` y `X-Rol-Id`: headers enviados explicitamente en endpoints protegidos desde los repositorios.
 
-Dentro de `LeaseFlow/app/src/main/java/com/leaseflow/app/`:
-- `MainActivity.kt`: punto de entrada Compose, creación de DB, repositorios y ViewModels.
-- `navigation/`: `AppNavGraph`, `AppDrawer`, `Routes`.
-- `ui/`
-  - `screen/`: pantallas Compose (Login, Register, Catálogo, Detalle, etc).
-  - `viewmodel/`: ViewModels + factories.
-  - `components/`: componentes reutilizables (TopBar, cards, chips, etc).
-  - `theme/`: tema Material 3.
-- `data/`
-  - `remote/`: `RetrofitClient`, DTOs y APIs.
-  - `repository/`: repositorios remotos/locales.
-  - `local/`: Room (`database/`, `dao/`, `entities/`) + `storage/` (DataStore).
-- `domain/validation/`: validadores reutilizables (email/RUT/teléfono/contraseña, etc).
+La sesion se centraliza en:
+- `LeaseFlow/app/src/main/java/com/leaseflow/app/data/local/storage/UserPreferences.kt`
 
----
+Ese archivo expone:
+- `UserSessionData`
+- `data: Flow<UserSessionData>`
+- `authToken`
+- `setAuthToken()`
+- persistencia de `userId`, `userRole`, `userEmail`, `userName` e indicador `isLoggedIn`
 
-## Navegación (mapa de pantallas)
+## Microservicios configurados
 
-La navegación se define en `AppNavGraph` usando `NavHost` y rutas declaradas en `Routes`.
+Las URLs base actuales apuntan a Azure Container Apps desde `RetrofitClient`:
 
-```mermaid
-flowchart TD
-  W[welcome] --> L[login]
-  W --> R[register]
-  L --> H[home]
-  R --> L
+- User Service: `https://userservice.calmbeach-1addaf50.brazilsouth.azurecontainerapps.io/`
+- Property Service: `https://propertyservice.calmbeach-1addaf50.brazilsouth.azurecontainerapps.io/`
+- Document Service: `https://documentservice.calmbeach-1addaf50.brazilsouth.azurecontainerapps.io/`
+- Application Service: `https://applicationservice.calmbeach-1addaf50.brazilsouth.azurecontainerapps.io/`
+- Contact Service: `https://contactservice.calmbeach-1addaf50.brazilsouth.azurecontainerapps.io/`
+- Review Service: `https://reviewservice.calmbeach-1addaf50.brazilsouth.azurecontainerapps.io/`
 
-  H --> C[catalogo_propiedades]
-  C --> D["propiedad_detalle/{propiedadId}"]
-  D --> S[solicitudes]
-  S --> SD["solicitud_detalle/{solicitudId}"]
+Importante:
+- El README anterior hablaba de puertos locales; eso ya no representa el estado real del proyecto.
+- Aunque `usesCleartextTraffic` sigue habilitado en el manifest para escenarios de desarrollo, la configuracion actual de red usa HTTPS.
 
-  H --> P[perfil]
-  P --> MD[mis_documentos]
-  P --> S
+## Estructura real del repositorio
 
-  H --> AP[admin_panel]
-  AP --> GU[gestion_usuarios]
-  AP --> GP[gestion_propiedades]
-  AP --> GD[gestion_documentos]
+Raiz del repositorio:
+- `README.md`
+- `LeaseFlow/` proyecto Android Gradle
 
-  H --> CT[contact]
+Dentro de `LeaseFlow/app/src/main/`:
+- `java/com/leaseflow/app/MainActivity.kt`
+- `java/com/leaseflow/app/navigation/`
+- `java/com/leaseflow/app/ui/components/`
+- `java/com/leaseflow/app/ui/screen/`
+- `java/com/leaseflow/app/ui/viewmodel/`
+- `java/com/leaseflow/app/data/local/`
+- `java/com/leaseflow/app/data/remote/`
+- `java/com/leaseflow/app/data/repository/`
+- `java/com/leaseflow/app/domain/validation/`
+- `res/`
+- `AndroidManifest.xml`
+
+Tests:
+- `LeaseFlow/app/src/test/`: tests JVM
+- `LeaseFlow/app/src/androidTest/`: tests instrumentados
+
+## Pantallas principales
+
+Las pantallas presentes hoy en el proyecto incluyen:
+
+- `WelcomeScreen`
+- `LoginScreen`
+- `RegisterScreen`
+- `HomeScreen`
+- `CatalogoPropiedadesScreen`
+- `PropiedadDetalleScreen`
+- `SolicitudesScreen`
+- `SolicitudDetalleScreen`
+- `MisPropiedadesScreen`
+- `MisArriendosScreen`
+- `MisDocumentosScreen`
+- `PerfilUsuarioScreen`
+- `ContactScreen`
+- `AdminPanelScreen`
+- `GestionPropiedadesScreen`
+- `GestionDocumentosScreen`
+- `GestionUsuariosScreen`
+- `UserManagementScreen`
+
+## Base de datos local
+
+La app usa Room mediante `LeaseFlowDatabase`.
+
+Uso actual:
+- cache local de entidades principales
+- catalogos maestros
+- soporte de fallback en algunos flujos cuando el backend no entrega toda la informacion enriquecida
+
+Notas importantes del estado actual:
+- el proyecto convive con datos remotos y locales
+- algunos ViewModels hacen enriquecimiento adicional consultando otros servicios cuando un DTO no trae toda la relacion necesaria
+
+## Solicitudes y enriquecimiento de datos
+
+El flujo de solicitudes es una de las partes mas importantes de la app:
+
+- `SolicitudArriendoDTO` es la entidad remota base.
+- Puede venir con `usuario` y `propiedad` anidados o solo con IDs.
+- `SolicitudesViewModel` transforma la respuesta a `SolicitudConDatos` para la UI.
+- Cuando falta detalle de propiedad, el cliente consulta `PropertyService`.
+- En el detalle de una solicitud, tambien se consulta `DocumentService` para verificar documentos aprobados del solicitante.
+
+Esto permite mostrar en UI:
+- datos de la propiedad
+- datos del solicitante
+- estado de la solicitud
+- validacion documental del usuario
+
+## Pruebas automatizadas
+
+Actualmente existen tests de varios tipos en `app/src/test`:
+
+- Unitarios
+- Integracion
+- Con mocks
+- Criterios de aceptacion
+- Carga
+- Estres
+
+Ejemplos presentes en el repositorio:
+- `LeaseFlowValidatorsTest.kt`
+- `SafeApiCallIntegrationTest.kt`
+- `ContactViewModelMockTest.kt`
+- `ContactFormAcceptanceTest.kt`
+- `LeaseFlowValidatorsLoadTest.kt`
+- `LeaseFlowValidatorsStressTest.kt`
+
+Estado real al momento de esta actualizacion:
+- `assembleDebug` pasa
+- `testDebugUnitTest` no pasa todavia
+- la causa actual es desalineacion entre varios tests y las nuevas firmas de ViewModels/repositorios tras la refactorizacion de sesion, headers y tipos protegidos
+
+Por eso, hoy el proyecto esta mas estable en compilacion de aplicacion que en cobertura de tests automatizados.
+
+## Requisitos de desarrollo
+
+- Android Studio
+- JDK 11
+- Gradle Wrapper incluido
+- Emulador Android o dispositivo fisico para ejecutar la app
+
+## Como ejecutar
+
+1. Abrir `LeaseFlow/` en Android Studio.
+2. Esperar la sincronizacion de Gradle.
+3. Ejecutar el target `app` en un emulador o dispositivo.
+
+Comandos utiles desde `LeaseFlow/`:
+
+```powershell
+.\gradlew.bat compileDebugKotlin
+.\gradlew.bat assembleDebug
+.\gradlew.bat testDebugUnitTest
 ```
 
----
+En el estado actual:
+- `compileDebugKotlin` funciona
+- `assembleDebug` funciona
+- `testDebugUnitTest` requiere ajustes adicionales
 
-## Backend / Microservicios
+## APK generado
 
-La app consume microservicios por puertos (configurados en `RetrofitClient`):
+La build `debug` se puede generar con:
 
-- User Service: `8081`
-- Property Service: `8082`
-- Document Service: `8083`
-- Application Service: `8084`
-- Contact Service: `8085`
-- Review Service: `8086`
-
-### Configurar IP (muy importante)
-
-El `baseUrl` usa una IP local (LAN) para desarrollo. Si ejecutas en emulador, normalmente necesitas:
-
-- **Emulador Android**: `10.0.2.2`
-- **Dispositivo físico**: IP de tu PC/servidor en la misma red
-
-La app permite HTTP en desarrollo mediante `network_security_config.xml` y `usesCleartextTraffic=true`.
-
----
-
-## Persistencia local (Room)
-
-- Base de datos: `LeaseFlowDatabase` (Room).
-- Estrategia de migración: `fallbackToDestructiveMigration()` (en desarrollo recrea la BD si cambia el esquema).
-- Poblado inicial: se insertan catálogos (roles/estados/regiones/comunas/tipos/categorías/tipos de documentos/tipos de reseña) y datos de prueba.
-
-### Usuarios de prueba (solo desarrollo)
-
-La base local se puebla con usuarios ejemplo (p.ej. Admin/Propietario/Arrendatario). Úsalos únicamente para pruebas en entorno local.
-
----
-
-## Permisos y capacidades
-
-Declarados en el `AndroidManifest.xml`:
-
-- `INTERNET` (consumo de APIs)
-- `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION` (propiedades cercanas)
-- `CAMERA` (captura de imágenes)
-
-Además:
-- `FileProvider` para compartir URIs de imágenes (cache interno `cache/images/`).
-
----
-
-## Requisitos para desarrollo
-
-- Android Studio (recomendado)
-- JDK 11 (el proyecto compila con target JVM 11)
-- Gradle Wrapper (incluido)
-- Emulador Android o dispositivo físico
-
----
-
-## Ejecutar la app
-
-1. Abrir la carpeta `LeaseFlow/` en Android Studio.
-2. Sincronizar Gradle.
-3. Configurar backend (microservicios) y ajustar IP si aplica.
-4. Ejecutar en emulador/dispositivo.
-
----
-
-## Comandos útiles (Gradle)
-
-Desde la carpeta `LeaseFlow/`:
-
-```bash
-# Windows (PowerShell)
-.\gradlew.bat test
-.\gradlew.bat :app:assembleDebug
+```powershell
+.\gradlew.bat assembleDebug
 ```
 
-```bash
-# macOS/Linux
-./gradlew test
-./gradlew :app:assembleDebug
-```
+Ruta esperada del APK:
+- `LeaseFlow/app/build/outputs/apk/debug/`
 
----
+## Manifest y permisos
 
-## Atajos recomendados (Android Studio)
+El `AndroidManifest.xml` declara:
 
-- Buscar acción: `Ctrl+Shift+A`
-- Buscar en todo el proyecto: `Double Shift`
-- Ir a archivo/clase: `Ctrl+N` / `Ctrl+Shift+N`
-- Reformat: `Ctrl+Alt+L`
-- Organizar imports: `Ctrl+Alt+O`
+- `INTERNET`
+- `ACCESS_FINE_LOCATION`
+- `ACCESS_COARSE_LOCATION`
+- `CAMERA`
+- `FileProvider`
 
----
+Tambien mantiene:
+- `usesCleartextTraffic="true"`
+- `networkSecurityConfig`
 
-## Troubleshooting
+## Problemas conocidos
 
-- **No conecta al backend**: revisa IP/puertos y que el dispositivo esté en la misma red.
-- **Emulador**: usa `10.0.2.2` para alcanzar tu localhost.
-- **HTTP bloqueado**: la app habilita cleartext en desarrollo, pero si cambias dominios/IPs verifica `network_security_config.xml`.
-- **Ubicación**: si el usuario deniega permisos, la app debe cargar propiedades sin priorizar cercanía.
+- La suite JVM no esta completamente sincronizada con las firmas actuales de produccion.
+- Existen warnings deprecados de Compose/Java que no bloquean la build, pero aun no fueron limpiados.
+- No hay evidencia automatizada de ejecucion en dispositivo dentro de este entorno; la validacion realizada fue de compilacion y empaquetado.
+- Algunos flujos de enriquecimiento de datos del lado cliente siguen siendo costosos, especialmente solicitudes asociadas a propiedades de un propietario.
+
+## Resumen honesto del estado actual
+
+Si necesitas una foto rapida del proyecto hoy:
+
+- La app Android compila.
+- El APK debug se genera.
+- La integracion con microservicios esta configurada para Azure.
+- La sesion y los headers de seguridad ya estan conectados en la app.
+- El README anterior estaba desactualizado en red, seguridad y estado de tests.
+- Este documento fue reescrito para reflejar el estado real del repositorio actual.
