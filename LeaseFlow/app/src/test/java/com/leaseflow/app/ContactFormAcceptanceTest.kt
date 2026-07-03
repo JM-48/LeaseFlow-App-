@@ -1,7 +1,9 @@
 package com.leaseflow.app
 
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.repository.ContactRemoteRepository
 import com.leaseflow.app.ui.viewmodel.ContactViewModel
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -10,7 +12,11 @@ import org.mockito.kotlin.mock
 
 class ContactFormAcceptanceTest {
 
-    private val viewModel = ContactViewModel(mock<ContactRemoteRepository>())
+    private val userPreferences = flowOf(UserSessionData())
+    private val viewModel = ContactViewModel(
+        mock<ContactRemoteRepository>(),
+        userPreferences
+    )
 
     @Test
     fun formulario_valido_cumple_los_criterios_de_aceptacion() {
@@ -33,7 +39,7 @@ class ContactFormAcceptanceTest {
         val mensaje = viewModel.validarMensaje("Muy corto")
 
         assertEquals(false, email.first)
-        assertEquals("El email no es válido", email.second)
+        assertEquals("El email no es valido", email.second)
         assertEquals(false, asunto.first)
         assertEquals("El asunto es obligatorio", asunto.second)
         assertEquals(false, mensaje.first)

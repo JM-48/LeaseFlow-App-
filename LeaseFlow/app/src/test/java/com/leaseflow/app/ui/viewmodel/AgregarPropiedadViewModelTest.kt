@@ -1,14 +1,25 @@
 package com.leaseflow.app.ui.viewmodel
 
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.ApiResult
-import com.leaseflow.app.data.remote.dto.*
+import com.leaseflow.app.data.remote.dto.ComunaRemoteDTO
+import com.leaseflow.app.data.remote.dto.PropertyRemoteDTO
 import com.leaseflow.app.data.repository.PropertyRemoteRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.Mock
@@ -20,8 +31,14 @@ import org.mockito.kotlin.whenever
 class AgregarPropiedadViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
+    private val userPreferences = flowOf(
+        UserSessionData(
+            isLoggedIn = true,
+            userId = 25L,
+            userRole = 2
+        )
+    )
 
-    // ⚠️ ASEGÚRATE QUE ESTA LÍNEA TENGA EL @Mock ARRIBA
     @Mock
     private lateinit var propertyRepository: PropertyRemoteRepository
 
@@ -29,21 +46,17 @@ class AgregarPropiedadViewModelTest {
 
     @Before
     fun setUp() {
-        // 1. INICIALIZACIÓN SÍNCRONA (Sin corrutinas aquí)
         MockitoAnnotations.openMocks(this)
         Dispatchers.setMain(testDispatcher)
 
-        // 2. CONFIGURACIÓN DE MOCKS (Aquí usamos runBlocking para las funciones suspendidas)
         runBlocking {
-            // Configuramos las respuestas vacías para que el init del ViewModel no falle
             whenever(propertyRepository.listarTipos()).thenReturn(ApiResult.Success(emptyList()))
             whenever(propertyRepository.listarRegiones()).thenReturn(ApiResult.Success(emptyList()))
             whenever(propertyRepository.listarComunas()).thenReturn(ApiResult.Success(emptyList()))
             whenever(propertyRepository.listarCategorias()).thenReturn(ApiResult.Success(emptyList()))
         }
 
-        // 3. INSTANCIAR VIEWMODEL
-        viewModel = AgregarPropiedadViewModel(propertyRepository)
+        viewModel = AgregarPropiedadViewModel(propertyRepository, userPreferences)
     }
 
     @After
@@ -51,33 +64,32 @@ class AgregarPropiedadViewModelTest {
         Dispatchers.resetMain()
     }
 
-    // ==================== TEST 1: FILTRADO DE COMUNAS ====================
     @Test
     fun `cargarComunasPorRegion filtra correctamente`() = runTest {
-        // 1. ARRANGE
         val regionIdTarget = 5L
-        val comunaCorrecta = ComunaRemoteDTO(id = 1, nombre = "Comuna 1", regionId = 5, region = null)
+        val comunaCorrecta = ComunaRemoteDTO(
+            id = 1L,
+            nombre = "Comuna 1",
+            regionId = 5L,
+            region = null
+        )
 
         whenever(propertyRepository.listarComunas())
             .thenReturn(ApiResult.Success(listOf(comunaCorrecta)))
 
-        // 2. ACT
         viewModel.cargarCatalogos()
         advanceUntilIdle()
         viewModel.cargarComunasPorRegion(regionIdTarget)
         advanceUntilIdle()
 
-        // 3. ASSERT
         assertEquals("Debería haber 1 comuna filtrada", 1, viewModel.comunasFiltradas.value.size)
         assertEquals("Comuna 1", viewModel.comunasFiltradas.value[0].nombre)
     }
 
-    // ==================== TEST 2: CREAR PROPIEDAD ====================
     @Test
     fun `crearPropiedad activa loading y guarda exitosamente`() = runTest {
-        // 1. ARRANGE
         val propiedadCreadaFake = PropertyRemoteDTO(
-            id = 777,
+            id = 777L,
             codigo = "COD-TEST",
             titulo = "Casa Test",
             precioMensual = 500000.0,
@@ -87,23 +99,32 @@ class AgregarPropiedadViewModelTest {
             nBanos = 2,
             petFriendly = true,
             direccion = "Calle Test 123",
-            tipoId = 1,
-            comunaId = 1,
-            propietarioId = 1,
+            tipoId = 1L,
+            comunaId = 1L,
+            propietarioId = 1L,
             fotos = emptyList(),
             tipo = null,
             comuna = null
         )
 
-        // EL TEST INFILTRADO: Verificamos 'isSaving' dentro del mock
-        whenever(propertyRepository.crearPropiedad(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()
-        )).thenAnswer {
-            assertTrue("El ViewModel debería estar guardando (isSaving=true)", viewModel.isSaving.value)
-            ApiResult.Success(propiedadCreadaFake)
-        }
+        whenever(propertyRepository.crearPropiedad(any(), any(), any()))
+            .thenAnswer { invocation ->
+                val propiedadEnviada = invocation.getArgument<PropertyRemoteDTO>(2)
+                assertTrue("El ViewModel debería estar guardando (isSaving=true)", viewModel.isSaving.value)
+                assertEquals("Casa Test", propiedadEnviada.titulo)
+                assertEquals(500000.0, propiedadEnviada.precioMensual, 0.0)
+                assertEquals("CLP", propiedadEnviada.divisa)
+                assertEquals(80.0, propiedadEnviada.m2, 0.0)
+                assertEquals(3, propiedadEnviada.nHabit)
+                assertEquals(2, propiedadEnviada.nBanos)
+                assertTrue(propiedadEnviada.petFriendly)
+                assertEquals("Calle Test 123", propiedadEnviada.direccion)
+                assertEquals(1L, propiedadEnviada.tipoId)
+                assertEquals(1L, propiedadEnviada.comunaId)
+                assertEquals(1L, propiedadEnviada.propietarioId)
+                ApiResult.Success(propiedadCreadaFake)
+            }
 
-        // 2. ACT
         viewModel.crearPropiedad(
             titulo = "Casa Test",
             precioMensual = 500000.0,
@@ -112,31 +133,26 @@ class AgregarPropiedadViewModelTest {
             nBanos = 2,
             petFriendly = true,
             direccion = "Calle Test 123",
-            tipoId = 1,
-            comunaId = 1,
-            propietarioId = 1
+            tipoId = 1L,
+            comunaId = 1L,
+            propietarioId = 1L
         )
 
         advanceUntilIdle()
 
-        // 3. ASSERT FINAL
         assertFalse("Al terminar, isSaving debe ser false", viewModel.isSaving.value)
         assertNotNull("La propiedad creada no debe ser nula", viewModel.propiedadCreada.value)
         assertEquals(777L, viewModel.propiedadCreada.value?.id)
         assertNotNull("Debe haber un mensaje de éxito", viewModel.successMsg.value)
     }
 
-    // ==================== TEST 3: ERROR AL CREAR ====================
     @Test
     fun `crearPropiedad maneja errores del servidor`() = runTest {
-        // 1. ARRANGE
         val mensajeError = "Error de conexión"
 
-        whenever(propertyRepository.crearPropiedad(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()
-        )).thenReturn(ApiResult.Error(mensajeError))
+        whenever(propertyRepository.crearPropiedad(any(), any(), any()))
+            .thenReturn(ApiResult.Error(mensajeError))
 
-        // 2. ACT
         viewModel.crearPropiedad(
             titulo = "X",
             precioMensual = 0.0,
@@ -145,13 +161,12 @@ class AgregarPropiedadViewModelTest {
             nBanos = 0,
             petFriendly = false,
             direccion = "X",
-            tipoId = 1,
-            comunaId = 1,
-            propietarioId = 1
+            tipoId = 1L,
+            comunaId = 1L,
+            propietarioId = 1L
         )
         advanceUntilIdle()
 
-        // 3. ASSERT
         assertNull("No se debió crear la propiedad", viewModel.propiedadCreada.value)
         assertEquals(mensajeError, viewModel.errorMsg.value)
         assertFalse("isSaving debe apagarse tras el error", viewModel.isSaving.value)

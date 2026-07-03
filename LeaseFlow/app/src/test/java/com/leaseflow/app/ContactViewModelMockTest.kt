@@ -1,5 +1,6 @@
 package com.leaseflow.app
 
+import com.leaseflow.app.data.local.storage.UserSessionData
 import com.leaseflow.app.data.remote.ApiResult
 import com.leaseflow.app.data.remote.dto.MensajeContactoDTO
 import com.leaseflow.app.data.repository.ContactRemoteRepository
@@ -16,6 +17,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
+import kotlinx.coroutines.flow.flowOf
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -26,6 +28,13 @@ class ContactViewModelMockTest {
 
     private val dispatcher = StandardTestDispatcher()
     private val repository: ContactRemoteRepository = mock()
+    private val userPreferences = flowOf(
+        UserSessionData(
+            isLoggedIn = true,
+            userId = 10L,
+            userRole = 1
+        )
+    )
 
     @Before
     fun setUp() {
@@ -57,7 +66,7 @@ class ContactViewModelMockTest {
             )
         ).thenReturn(ApiResult.Success(dto))
 
-        val viewModel = ContactViewModel(repository)
+        val viewModel = ContactViewModel(repository, userPreferences)
         viewModel.crearMensaje(
             nombre = "Ana",
             email = "ana@leaseflow.cl",
